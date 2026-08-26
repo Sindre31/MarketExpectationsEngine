@@ -1,0 +1,114 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  --bg: #f4f3ef;
+  --sur: #fdfdfb;
+  --sur2: #edebe5;
+  --ink: #191b20;
+  --mut: #71706b;
+  --bor: #e2dfd7;
+  --bor2: #cfccc3;
+  --acc: #33527d;
+  --accS: #e8edf4;
+  --pos: #1a7f4e;
+  --posBg: #e6f1ea;
+  --neg: #b3382f;
+  --negBg: #f6e9e7;
+  --est: #8a6d2f;
+  --estBg: #f6f4ee;
+  --sh: 0 1px 2px rgba(20, 20, 18, 0.05);
+  background: var(--bg);
+}
+body[data-theme='dark'] {
+  --bg: #0f1114;
+  --sur: #16181c;
+  --sur2: #1e2126;
+  --ink: #e6e4df;
+  --mut: #8f9299;
+  --bor: #262a30;
+  --bor2: #363b42;
+  --acc: #8fb0da;
+  --accS: #1b2533;
+  --pos: #46b881;
+  --posBg: #15281f;
+  --neg: #e0655c;
+  --negBg: #301a18;
+  --est: #cfa64e;
+  --estBg: #1f1c14;
+  --sh: none;
+}
+a {
+  color: var(--acc);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--ink);
+}
+input[type='range'] {
+  accent-color: var(--acc);
+  width: 100%;
+  margin: 0;
+  height: 16px;
+}
+input[type='number'] {
+  background: var(--sur);
+  border: 1px solid var(--bor2);
+  color: var(--ink);
+  border-radius: 3px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px;
+  padding: 2px 5px;
+  width: 62px;
+  text-align: right;
+}
+input[type='number']:focus,
+input[type='text']:focus {
+  outline: 1px solid var(--acc);
+  border-color: var(--acc);
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bor2);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* hover states (ported from the design's style-hover attributes) */
+.hov-sur2:hover {
+  background: var(--sur2);
+}
+.hov-ink:hover {
+  color: var(--ink);
+}
+.hov-accS:hover {
+  background: var(--accS);
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+  [data-print-hide] {
+    display: none !important;
+  }
+  [data-app-root] {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+  [data-app-col] {
+    height: auto !important;
+  }
+  [data-main] {
+    overflow: visible !important;
+    padding: 12px 0 !important;
+  }
+}

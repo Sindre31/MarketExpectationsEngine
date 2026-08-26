@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#33527d"/><text x="50" y="62" font-size="34" fill="#fdfdfb" text-anchor="middle" font-family="monospace" font-weight="bold">ME</text></svg></template>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;}
+body{--bg:#f4f3ef;--sur:#fdfdfb;--sur2:#edebe5;--ink:#191b20;--mut:#71706b;--bor:#e2dfd7;--bor2:#cfccc3;--acc:#33527d;--accS:#e8edf4;--pos:#1a7f4e;--posBg:#e6f1ea;--neg:#b3382f;--negBg:#f6e9e7;--est:#8a6d2f;--estBg:#f6f4ee;--sh:0 1px 2px rgba(20,20,18,.05);background:var(--bg);}
+body[data-theme="dark"]{--bg:#0f1114;--sur:#16181c;--sur2:#1e2126;--ink:#e6e4df;--mut:#8f9299;--bor:#262a30;--bor2:#363b42;--acc:#8fb0da;--accS:#1b2533;--pos:#46b881;--posBg:#15281f;--neg:#e0655c;--negBg:#301a18;--est:#cfa64e;--estBg:#1f1c14;--sh:none;}
+a{color:var(--acc);text-decoration:none;} a:hover{color:var(--ink);}
+input[type=range]{accent-color:var(--acc);width:100%;margin:0;height:16px;}
+input[type=number]{background:var(--sur);border:1px solid var(--bor2);color:var(--ink);border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;padding:2px 5px;width:62px;text-align:right;}
+input[type=number]:focus,input[type=text]:focus{outline:1px solid var(--acc);border-color:var(--acc);}
+::-webkit-scrollbar{width:10px;height:10px;} ::-webkit-scrollbar-thumb{background:var(--bor2);border-radius:5px;} ::-webkit-scrollbar-track{background:transparent;}
+@media print{
+  body{background:#fff;}
+  [data-print-hide]{display:none !important;}
+  [data-app-root]{height:auto !important;overflow:visible !important;display:block !important;}
+  [data-app-col]{height:auto !important;}
+  [data-main]{overflow:visible !important;padding:12px 0 !important;}
+}
+</style>
+</helmet>
+<div data-app-root="1" style="display:flex;height:100vh;overflow:hidden;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;font-size:13px;line-height:1.45;">
+  <nav data-print-hide="1" style="width:204px;flex-shrink:0;background:var(--sur);border-right:1px solid var(--bor);display:flex;flex-direction:column;">
+    <div style="padding:18px 18px 14px;border-bottom:1px solid var(--bor);">
+      <div style="font-size:13px;font-weight:700;letter-spacing:.02em;">Market Expectations<br>Engine</div>
+      <div style="font-size:10px;color:var(--mut);font-family:'IBM Plex Mono',monospace;margin-top:4px;">REVERSE-DCF TERMINAL</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:1px;padding:10px;">
+      <sc-for list="{{ navItems }}" as="nv" hint-placeholder-count="7">
+        <div onClick="{{ nv.onGo }}" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:4px;cursor:pointer;background:{{ nv.bg }};color:{{ nv.col }};font-weight:{{ nv.fw }};" style-hover="background:var(--sur2);">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--mut);">{{ nv.idx }}</span>
+          <span style="font-size:12.5px;">{{ nv.label }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="margin-top:auto;padding:14px 18px;border-top:1px solid var(--bor);font-size:10px;color:var(--mut);">
+      Mock dataset · NOK<br>Model v1.1 — API-ready
+    </div>
+  </nav>
+  <div data-app-col="1" style="flex:1;display:flex;flex-direction:column;min-width:0;">
+    <header style="min-height:58px;flex-shrink:0;background:var(--sur);border-bottom:1px solid var(--bor);display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:8px 22px;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:10px;white-space:nowrap;">
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:15px;">{{ coTicker }}</span>
+        <span style="font-weight:500;">{{ coName }}</span>
+        <span style="font-size:11px;color:var(--mut);">{{ coMeta }}</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:8px;font-family:'IBM Plex Mono',monospace;white-space:nowrap;">
+        <span style="font-size:16px;font-weight:600;">{{ coPrice }}</span>
+        <span style="font-size:12px;color:{{ coChgCol }};">{{ coChg }}</span>
+      </div>
+      <div style="font-size:11px;color:var(--mut);white-space:nowrap;">Mkt cap <span style="font-family:'IBM Plex Mono',monospace;color:var(--ink);">{{ coMcap }}</span></div>
+      <div style="font-size:10.5px;color:var(--mut);white-space:nowrap;">Updated 26 Aug 2026 · 16:25 CET</div>
+      <div data-print-hide="1" style="margin-left:auto;position:relative;display:flex;align-items:center;gap:8px;">
+        <input type="text" placeholder="Search companies…" value="{{ searchQ }}" onChange="{{ onSearch }}" onFocus="{{ onSearchFocus }}" onBlur="{{ onSearchBlur }}" style="background:var(--bg);border:1px solid var(--bor2);border-radius:4px;color:var(--ink);font-size:12px;padding:6px 10px;width:150px;max-width:26vw;font-family:'IBM Plex Sans',sans-serif;">
+        <sc-if value="{{ searchOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:34px;right:0;width:270px;background:var(--sur);border:1px solid var(--bor2);border-radius:5px;box-shadow:0 8px 24px rgba(0,0,0,.14);z-index:50;overflow:hidden;">
+            <sc-for list="{{ searchList }}" as="co" hint-placeholder-count="3">
+              <div onMouseDown="{{ co.onPick }}" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--bor);cursor:{{ co.cur }};" style-hover="background:var(--sur2);">
+                <div><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;">{{ co.t }}</span> <span style="font-size:12px;">{{ co.n }}</span></div>
+                <span style="font-size:9.5px;color:{{ co.tagCol }};font-family:'IBM Plex Mono',monospace;">{{ co.tag }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <button data-print-hide="1" onClick="{{ onExport }}" title="Print / save the current view as PDF" style="background:var(--sur);border:1px solid var(--bor2);color:var(--ink);border-radius:4px;padding:6px 12px;font-size:11.5px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;" style-hover="background:var(--sur2);">Export</button>
+      <button data-print-hide="1" onClick="{{ onTheme }}" style="background:var(--sur);border:1px solid var(--bor2);color:var(--mut);border-radius:4px;padding:6px 12px;font-size:11.5px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;" style-hover="color:var(--ink);">{{ themeLabel }}</button>
+    </header>
+    <main data-main="1" style="flex:1;overflow-y:auto;padding:24px 26px 48px;">
+      <div style="max-width:1280px;margin:0 auto;">
+
+      <sc-if value="{{ pgOverview }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;">
+          <h1 style="font-size:19px;font-weight:600;margin:0;">Company overview</h1>
+          <span style="font-size:11px;color:var(--mut);">FY2025A reported · FY2026E consensus</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:10px;">
+          <sc-for list="{{ ovMetrics }}" as="m" hint-placeholder-count="10">
+            <div title="{{ m.tip }}" style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:12px 14px;box-shadow:var(--sh);">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:6px;">{{ m.l }}</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;">{{ m.v }}</div>
+              <div style="font-size:10.5px;color:{{ m.subCol }};margin-top:3px;font-family:'IBM Plex Mono',monospace;">{{ m.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:10px;margin-bottom:10px;">
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;box-shadow:var(--sh);">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:10px;">Valuation vs history &amp; peers</div>
+            <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr;gap:0;font-size:12px;">
+              <div style="color:var(--mut);font-size:10.5px;padding:4px 0;border-bottom:1px solid var(--bor);">Metric</div>
+              <div style="color:var(--mut);font-size:10.5px;padding:4px 0;border-bottom:1px solid var(--bor);text-align:right;">Current</div>
+              <div style="color:var(--mut);font-size:10.5px;padding:4px 0;border-bottom:1px solid var(--bor);text-align:right;">5Y avg</div>
+              <div style="color:var(--mut);font-size:10.5px;padding:4px 0;border-bottom:1px solid var(--bor);text-align:right;">Peer med.</div>
+              <div style="color:var(--mut);font-size:10.5px;padding:4px 0;border-bottom:1px solid var(--bor);text-align:right;">vs hist.</div>
+              <sc-for list="{{ valRows }}" as="vr" hint-placeholder-count="5">
+                <div style="padding:6px 0;border-bottom:1px solid var(--bor);">{{ vr.m }}</div>
+                <div style="padding:6px 0;border-bottom:1px solid var(--bor);text-align:right;font-family:'IBM Plex Mono',monospace;font-weight:600;">{{ vr.cur }}</div>
+                <div style="padding:6px 0;border-bottom:1px solid var(--bor);text-align:right;font-family:'IBM Plex Mono',monospace;color:var(--mut);">{{ vr.avg }}</div>
+                <div style="padding:6px 0;border-bottom:1px solid var(--bor);text-align:right;font-family:'IBM Plex Mono',monospace;color:var(--mut);">{{ vr.peer }}</div>
+                <div style="padding:6px 0;border-bottom:1px solid var(--bor);text-align:right;font-family:'IBM Plex Mono',monospace;color:{{ vr.premCol }};">{{ vr.prem }}</div>
+              </sc-for>
+            </div>
+            <div style="font-size:10.5px;color:var(--mut);margin-top:10px;">{{ valFoot }}</div>
+          </div>
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;box-shadow:var(--sh);display:flex;flex-direction:column;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);">Share price · NOK</div>
+              <div style="display:flex;gap:2px;">
+                <sc-for list="{{ periods }}" as="p" hint-placeholder-count="3">
+                  <button onClick="{{ p.onPick }}" style="background:{{ p.bg }};color:{{ p.col }};border:1px solid var(--bor);border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;font-family:'IBM Plex Mono',monospace;">{{ p.l }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="flex:1;">{{ chPrice }}</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;box-shadow:var(--sh);">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:8px;">Revenue &amp; EBITDA margin</div>
+            {{ chRev }}
+            <div style="font-size:10px;color:var(--mut);margin-top:6px;">Bars: revenue, NOK bn · Line: EBITDA margin (rhs)</div>
+          </div>
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;box-shadow:var(--sh);">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:8px;">Margin development · %</div>
+            {{ chMargins }}
+            <div style="display:flex;gap:14px;font-size:10px;color:var(--mut);margin-top:6px;"><span>— Gross</span><span style="color:var(--acc);">— EBITDA</span><span style="color:var(--est);">— EBIT</span></div>
+          </div>
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;box-shadow:var(--sh);">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:8px;">EPS development · NOK</div>
+            {{ chEps }}
+            <div style="font-size:10px;color:var(--mut);margin-top:6px;">Shaded bars are consensus estimates</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:10px;">
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;box-shadow:var(--sh);">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--pos);margin-bottom:10px;">Bull case</div>
+            <sc-for list="{{ bullPts }}" as="b" hint-placeholder-count="3">
+              <div style="display:flex;gap:8px;margin-bottom:9px;font-size:12.5px;"><span style="color:var(--pos);font-family:'IBM Plex Mono',monospace;">+</span><span>{{ b.t }}</span></div>
+            </sc-for>
+          </div>
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;box-shadow:var(--sh);">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--neg);margin-bottom:10px;">Bear case</div>
+            <sc-for list="{{ bearPts }}" as="b" hint-placeholder-count="3">
+              <div style="display:flex;gap:8px;margin-bottom:9px;font-size:12.5px;"><span style="color:var(--neg);font-family:'IBM Plex Mono',monospace;">−</span><span>{{ b.t }}</span></div>
+            </sc-for>
+          </div>
+          <div style="background:var(--accS);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--acc);margin-bottom:10px;">Key debate</div>
+            <div style="font-size:12.5px;">{{ debateText }} <a href="#" onClick="{{ goExpectations }}">Open Expectations →</a></div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ pgExpectations }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-bottom:16px;">
+          <h1 style="font-size:22px;font-weight:600;margin:0 0 4px;">What does the current share price imply?</h1>
+          <div style="font-size:12.5px;color:var(--mut);">Reverse DCF — instead of estimating value, solve for the expectations embedded in NOK {{ coPrice }}.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:340px 1fr;gap:12px;align-items:start;">
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;box-shadow:var(--sh);">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--bor);">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);">Your assumptions</div>
+              <button onClick="{{ onReset }}" style="background:none;border:1px solid var(--bor2);color:var(--mut);border-radius:3px;padding:3px 9px;font-size:10.5px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;" style-hover="color:var(--ink);">Reset</button>
+            </div>
+            <div style="padding:10px 16px 14px;display:flex;flex-direction:column;gap:11px;">
+              <sc-for list="{{ assumps }}" as="asm" hint-placeholder-count="7">
+                <div title="{{ asm.tip }}">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                    <span style="font-size:11.5px;color:var(--mut);">{{ asm.l }}</span>
+                    <span style="display:flex;align-items:center;gap:3px;"><input type="number" value="{{ asm.val }}" step="{{ asm.step }}" onChange="{{ asm.onSet }}"><span style="font-size:10px;color:var(--mut);font-family:'IBM Plex Mono',monospace;">{{ asm.unit }}</span></span>
+                  </div>
+                  <input type="range" min="{{ asm.min }}" max="{{ asm.max }}" step="{{ asm.step }}" value="{{ asm.val }}" onChange="{{ asm.onSet }}" onInput="{{ asm.onSet }}">
+                </div>
+              </sc-for>
+            </div>
+            <div style="border-top:1px solid var(--bor);padding:11px 16px 13px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);">Presets</span>
+                <button onClick="{{ onSavePreset }}" style="background:none;border:1px solid var(--bor2);color:var(--acc);border-radius:3px;padding:3px 9px;font-size:10.5px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;" style-hover="background:var(--accS);">Save current</button>
+              </div>
+              <sc-if value="{{ hasPresets }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                  <sc-for list="{{ presetChips }}" as="pr" hint-placeholder-count="2">
+                    <span style="display:inline-flex;align-items:center;gap:6px;background:var(--sur2);border:1px solid var(--bor2);border-radius:3px;padding:3px 8px;font-size:10.5px;">
+                      <span onClick="{{ pr.onLoad }}" title="Load this assumption set" style="cursor:pointer;font-family:'IBM Plex Mono',monospace;">{{ pr.name }} · <b>{{ pr.ps }}</b></span>
+                      <span onClick="{{ pr.onDel }}" title="Delete preset" style="cursor:pointer;color:var(--mut);">×</span>
+                    </span>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ noPresets }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:10.5px;color:var(--mut);">Save assumption sets to compare their implied values side by side.</div>
+              </sc-if>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;min-width:0;">
+            <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:18px 20px;box-shadow:var(--sh);">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:14px;">
+                <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:4px;">Market price</div><div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;">{{ coPrice }}</div></div>
+                <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:4px;">Your model value</div><div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--acc);">{{ modelPS }}</div></div>
+                <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:4px;">Market vs model</div><div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:{{ gapCol }};">{{ gapPct }}</div></div>
+              </div>
+              <div style="position:relative;height:34px;margin:0 6px;">
+                <div style="position:absolute;top:15px;left:0;right:0;height:4px;background:var(--sur2);border-radius:2px;"></div>
+                <div style="position:absolute;top:15px;height:4px;background:var(--accS);left:{{ barLo }};width:{{ barW }};"></div>
+                <div style="position:absolute;top:8px;left:{{ modelPct }};transform:translateX(-50%);text-align:center;"><div style="width:2px;height:18px;background:var(--acc);margin:0 auto;"></div><div style="font-size:9px;color:var(--acc);font-family:'IBM Plex Mono',monospace;white-space:nowrap;">MODEL {{ modelPS }}</div></div>
+                <div style="position:absolute;top:8px;left:{{ pricePct }};transform:translateX(-50%);text-align:center;"><div style="width:2px;height:18px;background:var(--ink);margin:0 auto;"></div><div style="font-size:9px;color:var(--mut);font-family:'IBM Plex Mono',monospace;white-space:nowrap;">PRICE {{ coPrice }}</div></div>
+              </div>
+            </div>
+            <div style="background:var(--accS);border:1px solid var(--bor);border-radius:5px;padding:16px 20px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--acc);">Market-implied expectations</div>
+                <span style="font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:3px;background:{{ assessBg }};color:{{ assessCol }};font-family:'IBM Plex Mono',monospace;">{{ assessLabel }}</span>
+              </div>
+              <div style="font-size:14px;line-height:1.55;">{{ impliedSentence }}</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
+              <sc-for list="{{ impliedStats }}" as="st" hint-placeholder-count="5">
+                <div title="{{ st.tip }}" style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:11px 13px;box-shadow:var(--sh);">
+                  <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:5px;">{{ st.l }}</div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;">{{ st.v }}</div>
+                  <div style="font-size:10px;color:var(--mut);margin-top:2px;font-family:'IBM Plex Mono',monospace;">{{ st.sub }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;box-shadow:var(--sh);">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);">What the market is pricing in · revenue, NOK bn</div>
+                <div style="display:flex;gap:14px;font-size:10px;color:var(--mut);"><span>— Historical</span><span style="color:var(--est);">- - Analyst consensus</span><span style="color:var(--acc);">— Market-implied</span></div>
+              </div>
+              {{ chPricing }}
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ pgFinancials }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <h1 style="font-size:19px;font-weight:600;margin:0;">Financial model</h1>
+          <div style="display:flex;gap:2px;background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:3px;">
+            <sc-for list="{{ finTabs }}" as="tb" hint-placeholder-count="4">
+              <button onClick="{{ tb.onPick }}" style="background:{{ tb.bg }};color:{{ tb.col }};border:none;border-radius:3px;padding:5px 13px;font-size:11.5px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-weight:{{ tb.fw }};">{{ tb.l }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;box-shadow:var(--sh);overflow-x:auto;">
+          <div style="min-width:980px;">
+            <div style="display:grid;grid-template-columns:230px repeat(8,1fr);border-bottom:1px solid var(--bor2);background:var(--sur);">
+              <div style="padding:9px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);">NOK m unless stated</div>
+              <sc-for list="{{ yearCols }}" as="yc" hint-placeholder-count="8">
+                <div style="padding:9px 12px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:{{ yc.col }};background:{{ yc.bg }};">{{ yc.l }}</div>
+              </sc-for>
+            </div>
+            <sc-for list="{{ finRows }}" as="fr" hint-placeholder-count="12">
+              <div style="display:grid;grid-template-columns:230px repeat(8,1fr);border-bottom:1px solid var(--bor);" style-hover="background:var(--sur2);">
+                <div onClick="{{ fr.onToggle }}" style="padding:7px 16px;padding-left:{{ fr.pad }};font-size:12px;font-weight:{{ fr.fw }};color:{{ fr.lcol }};cursor:{{ fr.cur }};white-space:nowrap;">{{ fr.caret }}{{ fr.label }}</div>
+                <sc-for list="{{ fr.cells }}" as="cl" hint-placeholder-count="8">
+                  <div style="padding:7px 12px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:{{ fr.fw }};color:{{ cl.col }};background:{{ cl.bg }};">{{ cl.v }}</div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="font-size:10.5px;color:var(--mut);margin-top:8px;">A = actual · E = estimate (shaded). Click Revenue to expand segment detail.</div>
+      </sc-if>
+
+      <sc-if value="{{ pgScenarios }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-bottom:14px;">
+          <h1 style="font-size:19px;font-weight:600;margin:0 0 4px;">Scenario engine</h1>
+          <div style="font-size:12px;color:var(--mut);">Each scenario runs the full DCF. Adjust assumptions per scenario; outputs update immediately.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+          <sc-for list="{{ scCards }}" as="sc" hint-placeholder-count="3">
+            <div style="background:var(--sur);border:1px solid var(--bor);border-top:2px solid {{ sc.tone }};border-radius:5px;box-shadow:var(--sh);display:flex;flex-direction:column;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;padding:12px 16px;border-bottom:1px solid var(--bor);">
+                <span style="font-weight:600;font-size:13px;">{{ sc.name }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;color:{{ sc.tone }};">{{ sc.ps }}</span>
+              </div>
+              <div style="padding:10px 16px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--bor);">
+                <sc-for list="{{ sc.fields }}" as="f" hint-placeholder-count="5">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:11px;color:var(--mut);width:104px;flex-shrink:0;">{{ f.l }}</span>
+                    <input type="range" min="{{ f.min }}" max="{{ f.max }}" step="{{ f.step }}" value="{{ f.val }}" onChange="{{ f.onSet }}" onInput="{{ f.onSet }}" style="flex:1;">
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;width:46px;text-align:right;">{{ f.fmt }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="padding:10px 16px 12px;display:grid;grid-template-columns:1fr 1fr;gap:5px 14px;">
+                <sc-for list="{{ sc.outs }}" as="o" hint-placeholder-count="6">
+                  <div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:var(--mut);">{{ o.l }}</span><span style="font-family:'IBM Plex Mono',monospace;color:{{ o.col }};font-weight:{{ o.fw }};">{{ o.v }}</span></div>
+                </sc-for>
+              </div>
+              <button onClick="{{ sc.onLoad }}" style="margin:0 16px 13px;margin-top:auto;background:none;border:1px solid var(--bor2);color:var(--acc);border-radius:3px;padding:5px 0;font-size:10.5px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;" style-hover="background:var(--accS);">Load into Expectations →</button>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:10px;">
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;box-shadow:var(--sh);">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:10px;">Valuation range · NOK per share</div>
+            {{ chRange }}
+            <div style="font-size:10.5px;color:var(--mut);margin-top:8px;">Dashed marker: current price {{ coPrice }}.</div>
+          </div>
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;box-shadow:var(--sh);">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:10px;">Sensitivity · WACC × terminal growth (base case, NOK/share)</div>
+            <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:2px;font-family:'IBM Plex Mono',monospace;font-size:11px;">
+              <div style="padding:5px;color:var(--mut);font-size:9.5px;">WACC \ g∞</div>
+              <sc-for list="{{ sensHead }}" as="sh" hint-placeholder-count="5">
+                <div style="padding:5px;text-align:center;color:var(--mut);font-size:10px;">{{ sh.l }}</div>
+              </sc-for>
+              <sc-for list="{{ sensCells }}" as="scl" hint-placeholder-count="36">
+                <div title="{{ scl.tip }}" style="padding:6px 4px;text-align:center;border-radius:3px;background:{{ scl.bg }};color:{{ scl.col }};outline:{{ scl.ring }};font-weight:{{ scl.fw }};">{{ scl.v }}</div>
+              </sc-for>
+            </div>
+            <div style="font-size:10px;color:var(--mut);margin-top:8px;">Outlined cell = current base assumptions. Green above market price, red below.</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ pgValuation }}" hint-placeholder-val="{{ false }}">
+        <h1 style="font-size:19px;font-weight:600;margin:0 0 14px;">Valuation</h1>
+        <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:10px;margin-bottom:10px;">
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;box-shadow:var(--sh);">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:10px;">DCF build-up (your Expectations assumptions)</div>
+            <sc-for list="{{ dcfRows }}" as="dr" hint-placeholder-count="8">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0;border-bottom:1px solid {{ dr.bord }};font-size:12px;font-weight:{{ dr.fw }};">
+                <span style="color:{{ dr.lcol }};min-width:0;">{{ dr.l }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;color:{{ dr.vcol }};white-space:nowrap;flex-shrink:0;">{{ dr.v }}</span>
+              </div>
+            </sc-for>
+            <div style="font-size:10.5px;color:var(--mut);margin-top:10px;">Terminal value is {{ tvShareTxt }} of enterprise value — worth stressing in <a href="#" onClick="{{ goScenarios }}">Scenarios</a>.</div>
+          </div>
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;box-shadow:var(--sh);">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:10px;">Trading multiples → implied share price (on FY26E)</div>
+            <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr 1fr;font-size:12px;">
+              <div style="color:var(--mut);font-size:10.5px;padding:4px 0;border-bottom:1px solid var(--bor);">Method</div>
+              <div style="color:var(--mut);font-size:10.5px;padding:4px 0;border-bottom:1px solid var(--bor);text-align:right;">Current</div>
+              <div style="color:var(--mut);font-size:10.5px;padding:4px 0;border-bottom:1px solid var(--bor);text-align:right;">Hist. avg</div>
+              <div style="color:var(--mut);font-size:10.5px;padding:4px 0;border-bottom:1px solid var(--bor);text-align:right;">Peer med.</div>
+              <div style="color:var(--mut);font-size:10.5px;padding:4px 0;border-bottom:1px solid var(--bor);text-align:right;">Impl. price*</div>
+              <sc-for list="{{ multRows }}" as="mr" hint-placeholder-count="3">
+                <div style="padding:7px 0;border-bottom:1px solid var(--bor);">{{ mr.m }}</div>
+                <div style="padding:7px 0;border-bottom:1px solid var(--bor);text-align:right;font-family:'IBM Plex Mono',monospace;">{{ mr.cur }}</div>
+                <div style="padding:7px 0;border-bottom:1px solid var(--bor);text-align:right;font-family:'IBM Plex Mono',monospace;color:var(--mut);">{{ mr.hist }}</div>
+                <div style="padding:7px 0;border-bottom:1px solid var(--bor);text-align:right;font-family:'IBM Plex Mono',monospace;color:var(--mut);">{{ mr.peer }}</div>
+                <div style="padding:7px 0;border-bottom:1px solid var(--bor);text-align:right;font-family:'IBM Plex Mono',monospace;font-weight:600;">{{ mr.impl }}</div>
+              </sc-for>
+            </div>
+            <div style="font-size:10px;color:var(--mut);margin-top:10px;">*At peer-median multiple. Range across Bear/Base/Bull earnings shown in the football field.</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:10px;">
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;box-shadow:var(--sh);">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:10px;">Football field · NOK per share</div>
+            {{ chField }}
+          </div>
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;box-shadow:var(--sh);">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:10px;">EPS bridge FY25A → FY30E · base case, NOK</div>
+            {{ chBridge }}
+            <div style="font-size:10.5px;color:var(--mut);margin-top:8px;">Decomposes base-case EPS growth into revenue and margin contribution.</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ pgPeers }}" hint-placeholder-val="{{ false }}">
+        <h1 style="font-size:19px;font-weight:600;margin:0 0 14px;">Peer analysis</h1>
+        <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;box-shadow:var(--sh);overflow-x:auto;margin-bottom:10px;">
+          <div style="min-width:960px;display:grid;grid-template-columns:1.6fr repeat(9,1fr);">
+            <sc-for list="{{ peerHead }}" as="ph" hint-placeholder-count="10">
+              <div style="padding:9px 12px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);border-bottom:1px solid var(--bor2);text-align:{{ ph.al }};">{{ ph.l }}</div>
+            </sc-for>
+            <sc-for list="{{ peerCells }}" as="pc" hint-placeholder-count="70">
+              <div style="padding:7px 12px;font-size:11.5px;border-bottom:1px solid var(--bor);background:{{ pc.bg }};font-weight:{{ pc.fw }};text-align:{{ pc.al }};font-family:{{ pc.ff }};color:{{ pc.col }};white-space:nowrap;">{{ pc.v }}</div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;box-shadow:var(--sh);">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:8px;">Growth vs valuation · bubble = market cap</div>
+            {{ chScatter1 }}
+            <div style="font-size:10.5px;color:var(--mut);margin-top:6px;">Companies above the growth-for-multiple diagonal screen expensive; below it, cheap.</div>
+          </div>
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 18px;box-shadow:var(--sh);">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:8px;">Quality vs multiple · bubble = market cap</div>
+            {{ chScatter2 }}
+            <div style="font-size:10.5px;color:var(--mut);margin-top:6px;">High-ROIC names command higher EV/EBITDA; outliers merit a closer look.</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ pgCase }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;">
+          <h1 style="font-size:19px;font-weight:600;margin:0;">Investment case</h1>
+          <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:11px;color:var(--mut);">Rating</span><span style="font-size:11px;font-weight:600;letter-spacing:.06em;padding:3px 10px;border-radius:3px;background:var(--estBg);color:var(--est);font-family:'IBM Plex Mono',monospace;">{{ ratingTxt }}</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:10px;margin-bottom:10px;">
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:16px 20px;box-shadow:var(--sh);">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:12px;">Investment thesis</div>
+            <sc-for list="{{ thesis }}" as="th" hint-placeholder-count="3">
+              <div style="display:flex;gap:12px;margin-bottom:12px;">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--acc);font-weight:600;">{{ th.n }}</span>
+                <div><div style="font-weight:600;font-size:13px;margin-bottom:2px;">{{ th.h }}</div><div style="font-size:12.5px;color:var(--mut);">{{ th.t }}</div></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:14px 18px;box-shadow:var(--sh);">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--pos);margin-bottom:8px;">Key catalysts</div>
+              <sc-for list="{{ catalysts }}" as="c" hint-placeholder-count="5">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:5px 0;font-size:12px;"><span style="min-width:0;">{{ c.t }}</span><span style="font-size:10.5px;color:var(--mut);font-family:'IBM Plex Mono',monospace;white-space:nowrap;flex-shrink:0;">{{ c.when }}</span></div>
+              </sc-for>
+            </div>
+            <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;padding:14px 18px;box-shadow:var(--sh);">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--neg);margin-bottom:8px;">Key risks</div>
+              <sc-for list="{{ risks }}" as="r" hint-placeholder-count="4">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:5px 0;font-size:12px;"><span style="min-width:0;">{{ r.t }}</span><span style="font-size:10.5px;color:{{ r.sevCol }};font-family:'IBM Plex Mono',monospace;white-space:nowrap;flex-shrink:0;">{{ r.sev }}</span></div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+        <div style="background:var(--accS);border:1px solid var(--acc);border-radius:5px;padding:16px 20px;margin-bottom:10px;">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--acc);margin-bottom:8px;">Variant perception — where could the market be wrong?</div>
+          <div style="font-size:13px;line-height:1.6;">{{ variantText }}</div>
+        </div>
+        <div style="background:var(--sur);border:1px solid var(--bor);border-radius:5px;box-shadow:var(--sh);">
+          <div style="padding:13px 18px;border-bottom:1px solid var(--bor);font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);">Quarterly monitoring dashboard</div>
+          <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr .9fr;">
+            <div style="padding:8px 18px;font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bor);">KPI</div>
+            <div style="padding:8px 12px;font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bor);text-align:right;">Latest</div>
+            <div style="padding:8px 12px;font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bor);text-align:right;">Estimate</div>
+            <div style="padding:8px 12px;font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bor);">Trend (8Q)</div>
+            <div style="padding:8px 18px;font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bor);">Status</div>
+            <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="5">
+              <div style="padding:9px 18px;font-size:12.5px;border-bottom:1px solid var(--bor);">{{ k.l }}</div>
+              <div style="padding:9px 12px;font-size:12px;border-bottom:1px solid var(--bor);text-align:right;font-family:'IBM Plex Mono',monospace;font-weight:600;">{{ k.latest }}</div>
+              <div style="padding:9px 12px;font-size:12px;border-bottom:1px solid var(--bor);text-align:right;font-family:'IBM Plex Mono',monospace;color:var(--mut);">{{ k.est }}</div>
+              <div style="padding:6px 12px;border-bottom:1px solid var(--bor);">{{ k.spark }}</div>
+              <div style="padding:9px 18px;border-bottom:1px solid var(--bor);"><span style="font-size:10px;font-weight:600;letter-spacing:.05em;padding:2px 8px;border-radius:3px;background:{{ k.stBg }};color:{{ k.stCol }};font-family:'IBM Plex Mono',monospace;">{{ k.st }}</span></div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      </div>
+    </main>
+  </div>
+  <sc-if value="{{ ttOn }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:{{ ttX }};top:{{ ttY }};z-index:99;background:var(--ink);color:var(--bg);padding:7px 10px;border-radius:4px;font-size:11px;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.25);max-width:230px;">
+      <div style="font-weight:600;font-family:'IBM Plex Mono',monospace;margin-bottom:2px;">{{ ttTitle }}</div>
+      <sc-for list="{{ ttLines }}" as="tl" hint-placeholder-count="2">
+        <div style="font-family:'IBM Plex Mono',monospace;white-space:nowrap;">{{ tl.t }}</div>
+      </sc-for>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;defaultTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;defaultPage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;overview&quot;,&quot;expectations&quot;,&quot;financials&quot;,&quot;scenarios&quot;,&quot;valuation&quot;,&quot;peers&quot;,&quot;case&quot;],&quot;default&quot;:&quot;overview&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;estimateShading&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Appearance&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.CO = {
+      NDLS: {
+        ticker: 'NDLS', name: 'Nordlys Semiconductor ASA', meta: 'Oslo Børs · Semiconductors',
+        price: 187.4, chg: '+2.10 (+1.13%)', chgPos: true, shares: 760, debt: 6200,
+        M0: 28.4, B0: 22.9, daGap: 5.5, consG: 9.0,
+        rev: [18412, 21086, 24594, 27912, 31580, 35410, 39310, 43240],
+        gm: [52.4, 53.1, 54.0, 54.6, 55.0, 55.4, 55.8, 56.0],
+        em: [25.8, 26.9, 27.9, 28.4, 29.2, 30.0, 30.7, 31.2],
+        capexP: [8.2, 7.9, 7.6, 7.0, 7.0, 6.9, 6.8, 6.7],
+        cash: [5200, 6100, 7600, 10400, 12300, 14600, 17200, 20100],
+        roic: [14.2, 15.8, 17.1, 17.9, 18.8, 19.7, 20.4, 21.0],
+        rnd: [11.8, 11.6, 11.4, 11.3, 11.1, 11.0, 10.9, 10.8],
+        buyback: i => i >= 2 ? -1000 : 0, divRate: 0.35,
+        priceHist: [96, 103, 99, 108, 118, 112, 98, 91, 104, 117, 126, 138, 133, 146, 158, 152, 168, 175, 182, 187.4],
+        defA: { g: 9, tg: 2.5, em: 31, eb: 25.5, tax: 22, capex: 7, wacc: 8.5 },
+        scDef: {
+          bear: { g: 5, em: 28, eb: 22.5, wacc: 9.5, tg: 1.5, tax: 22, capex: 7.5 },
+          base: { g: 9, em: 31, eb: 25.5, wacc: 8.5, tg: 2.5, tax: 22, capex: 7 },
+          bull: { g: 13, em: 33.5, eb: 28, wacc: 8, tg: 3, tax: 22, capex: 6.5 }
+        },
+        hist: { pe: 21.3, eve: 12.8, evs: 3.8, fcfy: 3.8, peg: 1.7 },
+        wk52: [128, 196], peBand: [20, 26], eveBand: [12, 16.5], evsBand: [3.6, 4.8],
+        rating: 'HOLD · TARGET NOK 168', buyBelow: 155,
+        segs: [['Power Solutions', (r, i) => r * (0.44 + i * 0.008)], ['Sensing & Analog', (r, i) => r * (0.35 - i * 0.004)], ['Foundry Services', (r, i) => r * (0.21 - i * 0.004)]],
+        bull: [
+          'Power-semi content per EV rises 2.3x by 2030; NDLS is #2 in European SiC modules with 46 design wins secured.',
+          'Structural margin runway: mix shift to modules plus the 300mm ramp adds ~400bps of EBITDA margin by FY29.',
+          'Net cash balance sheet and ~3% FCF yield fund buybacks without constraining fab investment.'],
+        bear: [
+          'Auto is 58% of revenue and channel inventories sit at 9.4 weeks vs 8.0 normal — a correction hits FY27 estimates.',
+          'Chinese SiC entrants are compressing module ASPs 8–10% per year; the pricing umbrella may not hold.',
+          'At 24x forward earnings the reverse DCF shows the price already embeds near-flawless execution.'],
+        debate: 'Investors agree on the electrification volume story; they disagree on whether the margin expansion is structural (mix shift to SiC modules, 300mm scale) or a cyclical pricing umbrella that Chinese entrants will collapse. The answer determines whether 24x forward earnings is cheap or expensive.',
+        thesis: [
+          { n: '01', h: 'The volume story is real; the price story is not.', t: 'Electrification drives 9–11% structural revenue growth — but the market-implied path is much steeper with FY30 margins above 33%. Quality compounder, demanding entry price.' },
+          { n: '02', h: 'Margin expansion is part structural, part umbrella.', t: 'We credit ~250bps from mix and 300mm scale, not the full 400–600bps consensus extrapolates. Chinese SiC pricing is the swing factor.' },
+          { n: '03', h: 'Balance sheet optionality is underused but not free.', t: 'NOK 4.2bn net cash funds buybacks or M&A, worth ~NOK 8–10/share of option value — insufficient to close the gap to market-implied expectations.' }],
+        catalysts: [
+          { t: 'Q3 earnings — margin print vs 54.2% GM est.', when: 'OCT 26' },
+          { t: '300mm fab phase-2 ramp decision', when: 'Q4 26' },
+          { t: 'EU auto OEM platform award (SiC)', when: 'H1 27' },
+          { t: 'Market share vs Chinese entrants — teardown data', when: 'ONGOING' },
+          { t: 'Capital-allocation update / buyback extension', when: 'CMD MAR 27' }],
+        risks: [
+          { t: 'Auto channel inventory correction', sev: 'HIGH' },
+          { t: 'SiC module price compression >10%/yr', sev: 'HIGH' },
+          { t: 'Competitive intensity in sensing', sev: 'MED' },
+          { t: 'Multiple compression to peer median', sev: 'MED' }],
+        variantBody: 'The gap is not the volume outlook — it is margin durability. If Chinese SiC capacity forces module pricing down faster than mix improves, FY28–30 margins flatten near 29% and fair value falls toward the bear case (NOK {bear}). Conversely, if the 300mm cost curve lands as management guides, the bull case (NOK {bull}) is reachable without heroic growth. We would turn buyers below NOK {buy}, where the market-implied growth drops to consensus.',
+        kpis: [
+          { l: 'SiC module design wins (cumulative)', latest: '46', est: '41', vals: [18, 22, 26, 29, 33, 38, 42, 46], good: 1, st: 'ON TRACK' },
+          { l: 'Gross margin', latest: '54.6%', est: '54.2%', vals: [52.8, 53.0, 53.4, 53.6, 54.0, 54.1, 54.4, 54.6], good: 1, st: 'ON TRACK' },
+          { l: 'Foundry utilisation', latest: '84%', est: '88%', vals: [91, 90, 89, 88, 87, 86, 85, 84], good: 0, st: 'WATCH' },
+          { l: 'Book-to-bill', latest: '1.08x', est: '1.05x', vals: [0.94, 0.97, 1.01, 0.99, 1.03, 1.05, 1.06, 1.08], good: 1, st: 'ON TRACK' },
+          { l: 'Auto channel inventory (weeks)', latest: '9.4', est: '8.0', vals: [6.8, 7.0, 7.4, 7.9, 8.3, 8.8, 9.1, 9.4], good: 0, st: 'AT RISK' }],
+        valFootTail: 'trading at a premium to its own history on every multiple.'
+      },
+      VSTM: {
+        ticker: 'VSTM', name: 'Vestbo Micro ASA', meta: 'Oslo Børs · Industrial & Medtech Sensors',
+        price: 412.0, chg: '−3.40 (−0.82%)', chgPos: false, shares: 529, debt: 16600,
+        M0: 31.2, B0: 25.2, daGap: 6.0, consG: 8.0,
+        rev: [31240, 33810, 36420, 39120, 42250, 45640, 49200, 52900],
+        gm: [57.8, 58.1, 58.5, 58.9, 59.1, 59.3, 59.5, 59.7],
+        em: [29.6, 30.2, 30.7, 31.2, 31.6, 32.0, 32.4, 32.8],
+        capexP: [5.8, 5.6, 5.5, 5.4, 5.4, 5.3, 5.2, 5.1],
+        cash: [4800, 5600, 6900, 8200, 9800, 11600, 13600, 15800],
+        roic: [16.8, 17.6, 18.4, 19.5, 20.1, 20.8, 21.4, 22.0],
+        rnd: [8.9, 8.8, 8.7, 8.6, 8.6, 8.5, 8.5, 8.4],
+        buyback: () => 0, divRate: 0.45,
+        priceHist: [252, 266, 258, 274, 290, 281, 262, 255, 278, 296, 310, 330, 322, 344, 366, 358, 382, 395, 404, 412],
+        defA: { g: 8, tg: 2.5, em: 32.8, eb: 26.8, tax: 22, capex: 5.3, wacc: 8 },
+        scDef: {
+          bear: { g: 4, em: 30, eb: 24, wacc: 9, tg: 1.5, tax: 22, capex: 5.8 },
+          base: { g: 8, em: 32.8, eb: 26.8, wacc: 8, tg: 2.5, tax: 22, capex: 5.3 },
+          bull: { g: 11, em: 35, eb: 29, wacc: 7.5, tg: 3, tax: 22, capex: 5 }
+        },
+        hist: { pe: 23.5, eve: 14.2, evs: 4.3, fcfy: 3.5, peg: 2.4 },
+        wk52: [248, 418], peBand: [21, 27], eveBand: [13.5, 18], evsBand: [4.2, 6.0],
+        rating: 'HOLD · TARGET NOK 385', buyBelow: 340,
+        segs: [['Industrial Sensing', (r, i) => r * (0.44 - i * 0.006)], ['Medtech Sensors', (r, i) => r * (0.33 + i * 0.004)], ['Service & Calibration', (r, i) => r * (0.23 + i * 0.002)]],
+        bull: [
+          'Recurring service & calibration revenue is now 23% of sales and climbing, lifting group margins ~40bps a year.',
+          'Medtech sensor franchise grows 14% with regulatory moats and 10-year design lives.',
+          'A 25-year record of margin discipline through cycles; ROIC crossed 19% and keeps compounding.'],
+        bear: [
+          'Short-cycle industrial exposure (44% of sales) is rolling over; PMIs point to a soft FY27.',
+          'Net debt of NOK 8.4bn (0.7x EBITDA) limits buyback capacity versus net-cash peers.',
+          'At ~26x forward earnings the multiple assumes medtech growth never decelerates.'],
+        debate: 'Bulls treat Vestbo as a medtech compounder deserving a healthcare multiple; bears see an industrial cyclical with a medtech veneer. Which label wins decides whether 26x is justified — the reverse DCF quantifies the gap.',
+        thesis: [
+          { n: '01', h: 'Mix shift does the heavy lifting.', t: 'Medtech and service mix reaches 55%+ of sales by FY29, adding ~120bps to group EBITDA margin without heroic pricing.' },
+          { n: '02', h: 'The cycle is the entry point, not the thesis.', t: 'Short-cycle industrial softness in FY27 likely gives a better entry; structural growth is 7–9%, below what the price implies.' },
+          { n: '03', h: 'Leverage caps optionality.', t: '0.7x net debt is manageable but rules out the aggressive buybacks net-cash peers can fund; capital returns stay dividend-led.' }],
+        catalysts: [
+          { t: 'Q3 industrial order intake print', when: 'OCT 26' },
+          { t: 'Medtech FDA clearance — CGM sensor line', when: 'Q4 26' },
+          { t: 'Service attach-rate disclosure at CMD', when: 'MAR 27' },
+          { t: 'Deleveraging below 0.5x EBITDA', when: 'FY27' },
+          { t: 'Industrial PMI inflection', when: 'ONGOING' }],
+        risks: [
+          { t: 'Industrial downturn deeper than one year', sev: 'HIGH' },
+          { t: 'De-rating to industrial-peer multiples', sev: 'HIGH' },
+          { t: 'Medtech reimbursement pressure', sev: 'MED' },
+          { t: 'NOK strength vs EUR revenue base', sev: 'MED' }],
+        variantBody: 'The gap is classification, not forecasting: the stock is priced as pure medtech, but 44% of revenue is short-cycle industrial. If the industrial book contracts in FY27, group growth halves and fair value falls toward the bear case (NOK {bear}). If medtech sustains mid-teens growth while service mix compounds, the bull case (NOK {bull}) needs no multiple expansion. We would add below NOK {buy}, where implied growth meets our structural estimate.',
+        kpis: [
+          { l: 'Medtech revenue growth (YoY)', latest: '14.2%', est: '13.5%', vals: [11.8, 12.2, 12.6, 13.1, 13.4, 13.8, 14.0, 14.2], good: 1, st: 'ON TRACK' },
+          { l: 'Service attach rate', latest: '31%', est: '30%', vals: [26, 27, 27.5, 28, 29, 29.5, 30, 31], good: 1, st: 'ON TRACK' },
+          { l: 'Industrial book-to-bill', latest: '0.93x', est: '0.98x', vals: [1.06, 1.04, 1.02, 1.0, 0.99, 0.97, 0.95, 0.93], good: 0, st: 'AT RISK' },
+          { l: 'Net debt / EBITDA', latest: '0.69x', est: '0.75x', vals: [1.1, 1.05, 0.98, 0.92, 0.86, 0.8, 0.74, 0.69], good: 1, st: 'ON TRACK' },
+          { l: 'Gross margin', latest: '58.9%', est: '58.6%', vals: [57.9, 58.0, 58.2, 58.3, 58.5, 58.6, 58.7, 58.9], good: 1, st: 'ON TRACK' }],
+        valFootTail: 'priced closer to medtech than to its industrial peer set.'
+      }
+    };
+    this.PEERS = [
+      ['NDLS', 'Nordlys Semiconductor', 142.4, 12.4, 28.4, 22.9, 17.9, 24.4, 15.0, 4.4, 3.1],
+      ['VSTM', 'Vestbo Micro', 218, 8.0, 31.6, 25.6, 20.1, 25.8, 17.0, 5.4, 4.0],
+      ['ALDP', 'Aldra Power Semi', 96, 7.1, 24.5, 18.9, 12.8, 19.8, 11.9, 2.9, 4.4],
+      ['KVTK', 'Kvantek', 61, 15.6, 22.1, 16.4, 11.2, 31.5, 17.8, 3.9, 1.9],
+      ['HELS', 'Helios Sensor', 174, 8.9, 29.8, 23.6, 16.4, 22.3, 13.8, 4.1, 3.6],
+      ['BRND', 'Bornholm Devices', 44, 5.2, 20.3, 14.8, 9.6, 16.9, 9.8, 2.1, 5.2],
+      ['SRKM', 'Sarek Micro', 128, 11.2, 26.7, 21.0, 15.1, 23.1, 14.1, 3.8, 3.0]
+    ];
+    this.state = {
+      page: 'overview', theme: null, searchQ: '', searchOpen: false, tab: 'is', period: '5Y',
+      expanded: {}, company: 'NDLS', a: null, sc: null, presets: [], tt: null
+    };
+  }
+  componentDidMount() {
+    const th = this.props.defaultTheme ?? 'light';
+    document.body.dataset.theme = th;
+    let presets = [];
+    try { presets = JSON.parse(localStorage.getItem('mee_presets') || '[]'); } catch (e) {}
+    this.setState({ theme: th, page: this.props.defaultPage ?? 'overview', presets });
+  }
+  co() { return this.CO[this.state.company]; }
+  curA() { return this.state.a || this.co().defA; }
+  curSc() { return this.state.sc || this.co().scDef; }
+  dcf(a) {
+    const c = this.co();
+    const R0 = c.rev[3], M0 = c.M0, B0 = c.B0, NC = c.cash[3] - c.debt, SH = c.shares;
+    let w = a.wacc / 100, tg = a.tg / 100;
+    if (w - tg < 0.008) tg = w - 0.008;
+    let prev = R0, pvSum = 0, rows = [], f5 = 0;
+    for (let t = 1; t <= 5; t++) {
+      const rev = R0 * Math.pow(1 + a.g / 100, t);
+      const em = M0 + (a.em - M0) * t / 5, eb = B0 + (a.eb - B0) * t / 5;
+      const ebitda = rev * em / 100, ebit = rev * eb / 100;
+      const fcf = ebitda - ebit * a.tax / 100 - rev * a.capex / 100 - 0.02 * (rev - prev);
+      const pv = fcf / Math.pow(1 + w, t);
+      pvSum += pv; rows.push({ t, rev, ebitda, ebit, fcf, pv }); prev = rev; f5 = fcf;
+    }
+    const tv = f5 * (1 + tg) / (w - tg), tvPV = tv / Math.pow(1 + w, 5);
+    const ev = pvSum + tvPV, eq = ev + NC, ps = eq / SH;
+    const r5 = rows[4];
+    return { rows, pvSum, tv, tvPV, ev, eq, ps, tvShare: tvPV / ev, rev5: r5.rev, fcf5: r5.fcf, ebit5: r5.ebit,
+      eps5: r5.ebit * (1 - a.tax / 100) * 0.985 / SH, NC };
+  }
+  solve(fn, lo, hi, target) {
+    for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; if (fn(m) < target) lo = m; else hi = m; }
+    return (lo + hi) / 2;
+  }
+  P() {
+    return (this.state.theme || this.props.defaultTheme || 'light') === 'dark'
+      ? { grid: '#262a30', txt: '#8f9299', s1: '#8fb0da', s2: '#cfa64e', s3: '#46b881', neg: '#e0655c', bar: '#33414f', barE: '#242e39', ink: '#e6e4df', bg: '#16181c' }
+      : { grid: '#e6e3db', txt: '#8b887f', s1: '#33527d', s2: '#8a6d2f', s3: '#1a7f4e', neg: '#b3382f', bar: '#b7c4d6', barE: '#dde4ec', ink: '#191b20', bg: '#fdfdfb' };
+  }
+  tt(title, lines) {
+    return {
+      onMouseMove: e => this.setState({ tt: { x: e.clientX, y: e.clientY, title, lines } }),
+      onMouseLeave: () => this.setState({ tt: null })
+    };
+  }
+  lc(cfg) {
+    const E = React.createElement;
+    const { w = 520, h = 180, pl = 42, pr = 10, pt = 10, pb = 20, series, labels, fmt = v => v.toFixed(0), tipFmt, C } = cfg;
+    const tf = tipFmt || fmt;
+    let vals = []; series.forEach(s => s.v.forEach(v => { if (v != null) vals.push(v); }));
+    let mn = Math.min(...vals), mx = Math.max(...vals);
+    if (cfg.zero) mn = Math.min(0, mn);
+    const pd = (mx - mn) * 0.09 || 1; mn -= pd; mx += pd;
+    const n = labels.length;
+    const X = i => pl + (w - pl - pr) * (n > 1 ? i / (n - 1) : 0.5), Y = v => pt + (h - pt - pb) * (1 - (v - mn) / (mx - mn));
+    const k = [];
+    for (let i = 0; i < 4; i++) {
+      const y = pt + (h - pt - pb) * i / 3, vv = mn + (mx - mn) * (1 - i / 3);
+      k.push(E('line', { key: 'g' + i, x1: pl, x2: w - pr, y1: y, y2: y, stroke: C.grid }));
+      k.push(E('text', { key: 't' + i, x: pl - 5, y: y + 3, fontSize: 9, fill: C.txt, textAnchor: 'end', fontFamily: 'IBM Plex Mono' }, fmt(vv)));
+    }
+    labels.forEach((l, i) => { if (l) k.push(E('text', { key: 'x' + i, x: X(i), y: h - 6, fontSize: 9, fill: C.txt, textAnchor: 'middle', fontFamily: 'IBM Plex Mono' }, l)); });
+    series.forEach((s, si) => {
+      let d = '', on = false;
+      s.v.forEach((v, i) => { if (v == null) return; d += (on ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); on = true; });
+      k.push(E('path', { key: 'p' + si, d, fill: 'none', stroke: s.c, strokeWidth: s.wd || 1.8, strokeDasharray: s.dash }));
+      s.v.forEach((v, i) => {
+        if (v == null) return;
+        if (s.dots) k.push(E('circle', { key: 'd' + si + i, cx: X(i), cy: Y(v), r: 2.3, fill: s.c }));
+        k.push(E('circle', { key: 'h' + si + i, cx: X(i), cy: Y(v), r: 9, fill: 'transparent', style: { cursor: 'crosshair' }, ...this.tt(cfg.tipLabels ? cfg.tipLabels[i] : labels[i] || '', [{ t: (s.n ? s.n + ': ' : '') + tf(v) }]) }));
+      });
+    });
+    return E('svg', { viewBox: '0 0 ' + w + ' ' + h, width: '100%', style: { display: 'block' } }, k);
+  }
+  combo(cfg) {
+    const E = React.createElement;
+    const { w = 400, h = 180, pl = 38, pr = 34, pt = 10, pb = 20, bars, estFrom = 99, line, labels, fmt = v => v.toFixed(0), barName = '', lineName = '', barFmt, C } = cfg;
+    const bf = barFmt || (v => v.toFixed(1));
+    const mx = Math.max(...bars) * 1.1, n = labels.length;
+    const bw = (w - pl - pr) / n * 0.62;
+    const X = i => pl + (w - pl - pr) * (i + 0.5) / n, Y = v => pt + (h - pt - pb) * (1 - v / mx);
+    const k = [];
+    for (let i = 0; i < 4; i++) {
+      const y = pt + (h - pt - pb) * i / 3, vv = mx * (1 - i / 3);
+      k.push(E('line', { key: 'g' + i, x1: pl, x2: w - pr, y1: y, y2: y, stroke: C.grid }));
+      k.push(E('text', { key: 't' + i, x: pl - 5, y: y + 3, fontSize: 9, fill: C.txt, textAnchor: 'end', fontFamily: 'IBM Plex Mono' }, fmt(vv)));
+    }
+    bars.forEach((v, i) => {
+      const lines = [{ t: barName + ': ' + bf(v) }];
+      if (line) lines.push({ t: lineName + ': ' + line[i].toFixed(1) + '%' });
+      k.push(E('rect', { key: 'b' + i, x: X(i) - bw / 2, y: Y(v), width: bw, height: (h - pb) - Y(v), fill: i >= estFrom ? C.barE : C.bar, stroke: i >= estFrom ? C.s1 : 'none', strokeDasharray: i >= estFrom ? '2 2' : 'none', strokeWidth: 0.8, style: { cursor: 'crosshair' }, ...this.tt(labels[i] + (i >= estFrom ? ' (est.)' : ''), lines) }));
+      k.push(E('text', { key: 'xl' + i, x: X(i), y: h - 6, fontSize: 8.5, fill: C.txt, textAnchor: 'middle', fontFamily: 'IBM Plex Mono' }, labels[i]));
+    });
+    if (line) {
+      const lmn = Math.min(...line) * 0.96, lmx = Math.max(...line) * 1.04;
+      const LY = v => pt + (h - pt - pb) * (1 - (v - lmn) / (lmx - lmn));
+      let d = ''; line.forEach((v, i) => { d += (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + LY(v).toFixed(1); });
+      k.push(E('path', { key: 'ln', d, fill: 'none', stroke: C.s2, strokeWidth: 1.8 }));
+      line.forEach((v, i) => k.push(E('circle', { key: 'lc' + i, cx: X(i), cy: LY(v), r: 2, fill: C.s2 })));
+      k.push(E('text', { key: 'r0', x: w - 2, y: LY(lmx) + 8, fontSize: 9, fill: C.s2, textAnchor: 'end', fontFamily: 'IBM Plex Mono' }, lmx.toFixed(0) + '%'));
+      k.push(E('text', { key: 'r1', x: w - 2, y: LY(lmn) - 2, fontSize: 9, fill: C.s2, textAnchor: 'end', fontFamily: 'IBM Plex Mono' }, lmn.toFixed(0) + '%'));
+    }
+    return E('svg', { viewBox: '0 0 ' + w + ' ' + h, width: '100%', style: { display: 'block' } }, k);
+  }
+  rangeChart(items, marker, C, h) {
+    const E = React.createElement;
+    const w = 560, pl = 128, pr = 44, rh = 30; h = h || items.length * rh + 34;
+    let lo = marker, hi = marker;
+    items.forEach(it => { lo = Math.min(lo, it.lo); hi = Math.max(hi, it.hi); });
+    const pd = (hi - lo) * 0.08; lo -= pd; hi += pd;
+    const X = v => pl + (w - pl - pr) * (v - lo) / (hi - lo);
+    const k = [];
+    items.forEach((it, i) => {
+      const y = 14 + i * rh;
+      k.push(E('text', { key: 'l' + i, x: pl - 8, y: y + 12, fontSize: 10.5, fill: C.ink, textAnchor: 'end', fontFamily: 'IBM Plex Sans' }, it.label));
+      k.push(E('rect', { key: 'r' + i, x: X(it.lo), y: y + 3, width: Math.max(2, X(it.hi) - X(it.lo)), height: 12, rx: 2, fill: it.c || C.bar, opacity: 0.85, style: { cursor: 'crosshair' }, ...this.tt(it.label, [{ t: 'NOK ' + it.lo.toFixed(0) + ' – ' + it.hi.toFixed(0) + (it.mid != null ? ' · mid ' + it.mid.toFixed(0) : '') }]) }));
+      k.push(E('text', { key: 'lo' + i, x: X(it.lo) - 4, y: y + 12, fontSize: 9, fill: C.txt, textAnchor: 'end', fontFamily: 'IBM Plex Mono' }, it.lo.toFixed(0)));
+      k.push(E('text', { key: 'hi' + i, x: X(it.hi) + 4, y: y + 12, fontSize: 9, fill: C.txt, fontFamily: 'IBM Plex Mono' }, it.hi.toFixed(0)));
+      if (it.mid != null) k.push(E('line', { key: 'm' + i, x1: X(it.mid), x2: X(it.mid), y1: y + 1, y2: y + 17, stroke: C.ink, strokeWidth: 1.6 }));
+    });
+    const mh = 14 + items.length * rh;
+    k.push(E('line', { key: 'mk', x1: X(marker), x2: X(marker), y1: 6, y2: mh, stroke: C.neg, strokeWidth: 1.4, strokeDasharray: '4 3' }));
+    k.push(E('text', { key: 'mkt', x: X(marker), y: mh + 12, fontSize: 9.5, fill: C.neg, textAnchor: 'middle', fontFamily: 'IBM Plex Mono' }, marker.toFixed(0)));
+    return E('svg', { viewBox: '0 0 ' + w + ' ' + h, width: '100%', style: { display: 'block' } }, k);
+  }
+  scatter(cfg) {
+    const E = React.createElement;
+    const { pts, xl, yl, fx = v => v, fy = v => v, C } = cfg;
+    const w = 480, h = 250, pl = 46, pr = 14, pt = 12, pb = 34;
+    let xmn = 1e9, xmx = -1e9, ymn = 1e9, ymx = -1e9;
+    pts.forEach(p => { xmn = Math.min(xmn, p.x); xmx = Math.max(xmx, p.x); ymn = Math.min(ymn, p.y); ymx = Math.max(ymx, p.y); });
+    const xpd = (xmx - xmn) * 0.16, ypd = (ymx - ymn) * 0.18; xmn -= xpd; xmx += xpd; ymn -= ypd; ymx += ypd;
+    const X = v => pl + (w - pl - pr) * (v - xmn) / (xmx - xmn), Y = v => pt + (h - pt - pb) * (1 - (v - ymn) / (ymx - ymn));
+    const k = [];
+    for (let i = 0; i < 4; i++) {
+      const y = pt + (h - pt - pb) * i / 3, vv = ymn + (ymx - ymn) * (1 - i / 3);
+      k.push(E('line', { key: 'g' + i, x1: pl, x2: w - pr, y1: y, y2: y, stroke: C.grid }));
+      k.push(E('text', { key: 'gy' + i, x: pl - 5, y: y + 3, fontSize: 9, fill: C.txt, textAnchor: 'end', fontFamily: 'IBM Plex Mono' }, fy(vv)));
+      const x = pl + (w - pl - pr) * i / 3, xv = xmn + (xmx - xmn) * i / 3;
+      k.push(E('text', { key: 'gx' + i, x, y: h - 20, fontSize: 9, fill: C.txt, textAnchor: 'middle', fontFamily: 'IBM Plex Mono' }, fx(xv)));
+    }
+    k.push(E('text', { key: 'xl', x: (pl + w - pr) / 2, y: h - 4, fontSize: 9.5, fill: C.txt, textAnchor: 'middle', fontFamily: 'IBM Plex Sans' }, xl));
+    k.push(E('text', { key: 'yl', x: 10, y: pt + 2, fontSize: 9.5, fill: C.txt, fontFamily: 'IBM Plex Sans' }, yl));
+    pts.forEach((p, i) => {
+      const r = 4 + Math.sqrt(p.m) / 2.2;
+      k.push(E('circle', { key: 'c' + i, cx: X(p.x), cy: Y(p.y), r, fill: p.hl ? C.s1 : C.bar, opacity: p.hl ? 0.95 : 0.75, stroke: p.hl ? C.ink : 'none', strokeWidth: 1, style: { cursor: 'crosshair' }, ...this.tt(p.t, [{ t: xl + ': ' + fx(p.x) }, { t: yl + ': ' + fy(p.y) }, { t: 'Mkt cap: NOK ' + p.m.toFixed(0) + 'bn' }]) }));
+      k.push(E('text', { key: 'ct' + i, x: X(p.x) + r + 3, y: Y(p.y) + 3, fontSize: 9, fill: p.hl ? C.ink : C.txt, fontFamily: 'IBM Plex Mono', fontWeight: p.hl ? 600 : 400 }, p.t));
+    });
+    return E('svg', { viewBox: '0 0 ' + w + ' ' + h, width: '100%', style: { display: 'block' } }, k);
+  }
+  waterfall(items, C) {
+    const E = React.createElement;
+    const w = 460, h = 215, pl = 38, pr = 8, pt = 16, pb = 34;
+    let cum = 0;
+    const bars = items.map(it => {
+      if (it.isTotal) { const b = { lo: 0, hi: it.v }; cum = it.v; return b; }
+      const b = { lo: Math.min(cum, cum + it.v), hi: Math.max(cum, cum + it.v) }; cum += it.v; return b;
+    });
+    const mx = Math.max(...bars.map(b => b.hi)) * 1.14;
+    const n = items.length, bw = (w - pl - pr) / n * 0.62;
+    const X = i => pl + (w - pl - pr) * (i + 0.5) / n, Y = v => pt + (h - pt - pb) * (1 - v / mx);
+    const k = [];
+    for (let i = 0; i < 4; i++) {
+      const y = pt + (h - pt - pb) * i / 3, vv = mx * (1 - i / 3);
+      k.push(E('line', { key: 'g' + i, x1: pl, x2: w - pr, y1: y, y2: y, stroke: C.grid }));
+      k.push(E('text', { key: 't' + i, x: pl - 5, y: y + 3, fontSize: 9, fill: C.txt, textAnchor: 'end', fontFamily: 'IBM Plex Mono' }, vv.toFixed(0)));
+    }
+    items.forEach((it, i) => {
+      const b = bars[i];
+      const fill = it.isTotal ? C.s1 : it.v >= 0 ? C.s3 : C.neg;
+      k.push(E('rect', { key: 'b' + i, x: X(i) - bw / 2, y: Y(b.hi), width: bw, height: Math.max(1.5, Y(b.lo) - Y(b.hi)), fill, opacity: it.isTotal ? 0.9 : 0.8, style: { cursor: 'crosshair' }, ...this.tt(it.l, [{ t: (it.isTotal ? '' : (it.v >= 0 ? '+' : '')) + it.v.toFixed(2) + ' NOK' }]) }));
+      k.push(E('text', { key: 'v' + i, x: X(i), y: Y(b.hi) - 4, fontSize: 9, fill: C.ink, textAnchor: 'middle', fontFamily: 'IBM Plex Mono' }, (it.isTotal ? '' : (it.v >= 0 ? '+' : '')) + it.v.toFixed(2)));
+      k.push(E('text', { key: 'x' + i, x: X(i), y: h - 18, fontSize: 8.5, fill: C.txt, textAnchor: 'middle', fontFamily: 'IBM Plex Mono' }, it.l));
+      if (i < n - 1) k.push(E('line', { key: 'cn' + i, x1: X(i) + bw / 2, x2: X(i + 1) - bw / 2, y1: it.isTotal ? Y(b.hi) : (it.v >= 0 ? Y(b.hi) : Y(b.lo)), y2: it.isTotal ? Y(b.hi) : (it.v >= 0 ? Y(b.hi) : Y(b.lo)), stroke: C.txt, strokeDasharray: '2 2', strokeWidth: 0.8 }));
+    });
+    return E('svg', { viewBox: '0 0 ' + w + ' ' + h, width: '100%', style: { display: 'block' } }, k);
+  }
+  spark(vals, good, C) {
+    const E = React.createElement;
+    const w = 84, h = 24, mn = Math.min(...vals), mx = Math.max(...vals), sp = mx - mn || 1;
+    let d = ''; vals.forEach((v, i) => { d += (i ? 'L' : 'M') + (3 + (w - 6) * i / (vals.length - 1)).toFixed(1) + ' ' + (h - 3 - (h - 7) * (v - mn) / sp).toFixed(1); });
+    return E('svg', { viewBox: '0 0 ' + w + ' ' + h, width: w, height: h, style: { display: 'block' } },
+      E('path', { d, fill: 'none', stroke: good ? C.s3 : C.neg, strokeWidth: 1.5 }));
+  }
+  savePresets(list) { try { localStorage.setItem('mee_presets', JSON.stringify(list)); } catch (e) {} }
+  renderVals() {
+    const S = this.state, C = this.P(), c = this.co();
+    const PRICE = c.price, SH = c.shares;
+    const a = this.curA(), scNow = this.curSc();
+    const setA = k => e => { const v = parseFloat(e.target.value); if (!isNaN(v)) this.setState(s => ({ a: { ...(s.a || c.defA), [k]: v } })); };
+    const go = p => () => this.setState({ page: p });
+    const fM = v => { const neg = v < 0; const s = Math.round(Math.abs(v)).toLocaleString('en-US').replace(/,/g, ' '); return (neg ? '−' : '') + s; };
+    const fB = v => (v / 1000).toFixed(1);
+    const YRS = ['FY22A', 'FY23A', 'FY24A', 'FY25A', 'FY26E', 'FY27E', 'FY28E', 'FY29E'];
+    const rev = c.rev, gm = c.gm, em = c.em;
+    const ebm = em.map(v => +(v - c.daGap).toFixed(1));
+    const ebitda = rev.map((r, i) => r * em[i] / 100), ebit = rev.map((r, i) => r * ebm[i] / 100);
+    const ni = ebit.map(e => e * 0.78), eps = ni.map(n => n / SH);
+    const capex = rev.map((r, i) => r * c.capexP[i] / 100);
+    const ocf = ebitda.map((e, i) => e - ebit[i] * 0.22 - (i ? 0.02 * (rev[i] - rev[i - 1]) : 300));
+    const fcf = ocf.map((o, i) => o - capex[i]);
+    const growth = rev.map((r, i) => i ? (r / rev[i - 1] - 1) * 100 : 11.8);
+    const mcapM = PRICE * SH, netDebt = c.debt - c.cash[3], evM = mcapM + netDebt;
+    const d = this.dcf(a);
+    const implG = this.solve(g => this.dcf({ ...a, g }).ps, 0, 40, PRICE);
+    const implEm = this.solve(m => this.dcf({ ...a, g: c.consG, em: m, eb: m - c.daGap }).ps, 15, 60, PRICE);
+    const dImpl = this.dcf({ ...a, g: implG });
+    const implFcfM = dImpl.fcf5 / dImpl.rev5 * 100;
+    const implRoic = (dImpl.ebit5 * (1 - a.tax / 100)) / (dImpl.rev5 * 0.85) * 100;
+    const gap = (PRICE / d.ps - 1) * 100;
+    const gDiff = implG - c.consG;
+    const assess = gDiff > 2.5 ? ['AGGRESSIVE', 'var(--negBg)', 'var(--neg)'] : gDiff < -1 ? ['CONSERVATIVE', 'var(--posBg)', 'var(--pos)'] : ['REASONABLE', 'var(--estBg)', 'var(--est)'];
+    const lo = Math.min(d.ps, PRICE) * 0.7, hi = Math.max(d.ps, PRICE) * 1.15;
+    const pct = v => ((v - lo) / (hi - lo) * 100).toFixed(1) + '%';
+    // multiples
+    const eps26 = eps[4], ebitda26 = ebitda[4], rev26 = rev[4], fcf25 = fcf[3];
+    const pe = PRICE / eps26, evE = evM / ebitda26, evS = evM / rev26, fcfY = fcf25 / mcapM * 100;
+    const epsCagr = (Math.pow(eps[7] / eps26, 1 / 3) - 1) * 100;
+    const peg = pe / epsCagr;
+    const others = this.PEERS.filter(p => p[0] !== c.ticker);
+    const med = idx => { const s = others.map(p => p[idx]).sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+    const evps = (m, b) => (m * b - netDebt) / SH;
+    // scenarios
+    const scDefs = [['bear', 'Bear', 'var(--neg)'], ['base', 'Base', 'var(--acc)'], ['bull', 'Bull', 'var(--pos)']];
+    const setSc = (id, k) => e => { const v = parseFloat(e.target.value); if (!isNaN(v)) this.setState(s => ({ sc: { ...(s.sc || c.scDef), [id]: { ...(s.sc || c.scDef)[id], [k]: v } } })); };
+    const scR = {};
+    const scCards = scDefs.map(([id, name, tone]) => {
+      const p = scNow[id], r = this.dcf(p); scR[id] = r;
+      const up = (r.ps / PRICE - 1) * 100;
+      const fl = [['Revenue CAGR', 'g', 0, 22, 0.5], ['EBITDA margin ⁵ʸ', 'em', 20, 42, 0.5], ['EBIT margin ⁵ʸ', 'eb', 14, 36, 0.5], ['WACC', 'wacc', 6, 12, 0.25], ['Terminal growth', 'tg', 0, 4, 0.25]];
+      return {
+        name, tone, ps: r.ps.toFixed(0),
+        onLoad: () => this.setState({ a: { ...p }, page: 'expectations' }),
+        fields: fl.map(([l, k, mn, mx, st]) => ({ l, min: mn, max: mx, step: st, val: p[k], fmt: p[k].toFixed(k === 'wacc' || k === 'tg' ? 2 : 1) + '%', onSet: setSc(id, k) })),
+        outs: [
+          { l: 'EPS FY30E', v: r.eps5.toFixed(2), col: 'var(--ink)', fw: 400 },
+          { l: 'FCF FY30E', v: fB(r.fcf5) + 'bn', col: 'var(--ink)', fw: 400 },
+          { l: 'Enterprise value', v: fB(r.ev) + 'bn', col: 'var(--ink)', fw: 400 },
+          { l: 'Equity value', v: fB(r.eq) + 'bn', col: 'var(--ink)', fw: 400 },
+          { l: 'Implied price', v: 'NOK ' + r.ps.toFixed(0), col: tone, fw: 600 },
+          { l: 'Upside', v: (up >= 0 ? '+' : '') + up.toFixed(0) + '%', col: up >= 0 ? 'var(--pos)' : 'var(--neg)', fw: 600 }
+        ]
+      };
+    });
+    const waccs = [7.5, 8, 8.5, 9, 9.5, 10], tgs = [1.5, 2, 2.5, 3, 3.5];
+    const base = scNow.base;
+    const sensCells = [];
+    waccs.forEach(wv => {
+      sensCells.push({ v: wv.toFixed(1) + '%', bg: 'transparent', col: 'var(--mut)', ring: 'none', fw: 400, tip: '' });
+      tgs.forEach(tv => {
+        const ps = this.dcf({ ...base, wacc: wv, tg: tv }).ps;
+        const rel = ps / PRICE;
+        const cur = Math.abs(wv - base.wacc) < 0.13 && Math.abs(tv - base.tg) < 0.13;
+        sensCells.push({
+          v: ps.toFixed(0),
+          bg: rel > 1.05 ? 'var(--posBg)' : rel < 0.95 ? 'var(--negBg)' : 'var(--sur2)',
+          col: rel > 1.05 ? 'var(--pos)' : rel < 0.95 ? 'var(--neg)' : 'var(--ink)',
+          fw: cur ? 700 : 400, ring: cur ? '1.5px solid var(--acc)' : 'none',
+          tip: 'WACC ' + wv + '% · terminal growth ' + tv + '% → NOK ' + ps.toFixed(0)
+        });
+      });
+    });
+    // financial statements
+    const est = i => i >= 4;
+    const shade = this.props.estimateShading ?? true;
+    const mkCells = (vals, fmt, negRed) => vals.map((v, i) => ({
+      v: fmt(v, i), bg: est(i) && shade ? 'var(--estBg)' : 'transparent',
+      col: negRed && v < 0 ? 'var(--neg)' : 'var(--ink)'
+    }));
+    const pctF = v => v.toFixed(1) + '%';
+    const row = (id, label, vals, fmt, o = {}) => ({ id, label, vals, fmt, ...o });
+    const isRows = [
+      row('rev', 'Revenue', rev, fM, { bold: 1, exp: 1 }),
+      row('g', 'YoY growth %', growth, pctF, { sub: 1 }),
+      row('gp', 'Gross profit', rev.map((r, i) => r * gm[i] / 100), fM),
+      row('gpm', 'Gross margin %', gm, pctF, { sub: 1 }),
+      row('ebitda', 'EBITDA', ebitda, fM, { bold: 1 }),
+      row('ebitdam', 'EBITDA margin %', em, pctF, { sub: 1 }),
+      row('da', 'D&A', rev.map(r => -r * c.daGap / 100), fM),
+      row('ebit', 'EBIT', ebit, fM, { bold: 1 }),
+      row('ebitm', 'EBIT margin %', ebm, pctF, { sub: 1 }),
+      row('fin', 'Net financials', rev.map((r, i) => (c.cash[i] - c.debt) * 0.03), fM),
+      row('tax', 'Tax (22%)', ebit.map(e => -e * 0.22), fM),
+      row('ni', 'Net income', ni, fM, { bold: 1 }),
+      row('eps', 'EPS · NOK', eps, v => v.toFixed(2), { bold: 1 })
+    ];
+    const bsRows = [
+      row('cash', 'Cash & equivalents', c.cash, fM),
+      row('ar', 'Receivables', rev.map(r => r * 0.12), fM),
+      row('inv', 'Inventory', rev.map(r => r * 0.145), fM),
+      row('ppe', 'PP&E', rev.map(r => r * 0.38), fM),
+      row('int', 'Intangibles & goodwill', rev.map((r, i) => 8600 + i * 240), fM),
+      row('ta', 'Total assets', rev.map((r, i) => c.cash[i] + r * 0.645 + 8600 + i * 240), fM, { bold: 1 }),
+      row('debt', 'Interest-bearing debt', rev.map(() => c.debt), fM),
+      row('ol', 'Other liabilities', rev.map(r => r * 0.185), fM),
+      row('eqt', 'Shareholders\u2019 equity', rev.map((r, i) => c.cash[i] + r * 0.46 + 8600 + i * 240 - c.debt), fM, { bold: 1 }),
+      row('nd', 'Net debt (cash)', c.cash.map(x => c.debt - x), fM, { bold: 1 })
+    ];
+    const cfRows = [
+      row('cebitda', 'EBITDA', ebitda, fM),
+      row('wc', 'Change in working capital', rev.map((r, i) => i ? -0.02 * (r - rev[i - 1]) : -300), fM),
+      row('taxp', 'Tax paid', ebit.map(e => -e * 0.22), fM),
+      row('ocf', 'Operating cash flow', ocf, fM, { bold: 1 }),
+      row('cap', 'Capex', capex.map(x => -x), fM),
+      row('ccp', 'Capex % of revenue', c.capexP.map(v => -v), v => v.toFixed(1) + '%', { sub: 1 }),
+      row('fcf', 'Free cash flow', fcf, fM, { bold: 1 }),
+      row('fcfm', 'FCF margin %', fcf.map((f, i) => f / rev[i] * 100), pctF, { sub: 1 }),
+      row('div', 'Dividends', ni.map(n => -n * c.divRate), fM),
+      row('bb', 'Share buybacks', rev.map((r, i) => c.buyback(i)), fM)
+    ];
+    const kpiRows = [
+      row('roic', 'ROIC %', c.roic, pctF, { bold: 1 }),
+      row('roe', 'ROE %', ni.map((n, i) => n / (c.cash[i] + rev[i] * 0.46 + 8600) * 100), pctF),
+      row('fcfm2', 'FCF margin %', fcf.map((f, i) => f / rev[i] * 100), pctF),
+      row('conv', 'FCF conversion (FCF/NI) %', fcf.map((f, i) => f / ni[i] * 100), v => v.toFixed(0) + '%'),
+      row('rnd', 'R&D % of revenue', c.rnd, pctF),
+      row('nde', 'Net debt / EBITDA', c.cash.map((x, i) => (c.debt - x) / ebitda[i]), v => v.toFixed(1) + 'x', { bold: 1 })
+    ];
+    const tabRows = { is: isRows, bs: bsRows, cf: cfRows, kpi: kpiRows };
+    const finRows = [];
+    (tabRows[S.tab] || isRows).forEach(r => {
+      const expd = !!S.expanded[r.id];
+      finRows.push({
+        label: r.label, caret: r.exp ? (expd ? '▾ ' : '▸ ') : '',
+        pad: r.sub ? '28px' : '16px', fw: r.bold ? 600 : 400,
+        lcol: r.sub ? 'var(--mut)' : 'var(--ink)', cur: r.exp ? 'pointer' : 'default',
+        onToggle: r.exp ? (() => this.setState(s => ({ expanded: { ...s.expanded, [r.id]: !s.expanded[r.id] } }))) : null,
+        cells: mkCells(r.vals, r.fmt, true)
+      });
+      if (r.exp && expd) c.segs.forEach(([sl, fn]) => finRows.push({
+        label: sl, caret: '', pad: '32px', fw: 400, lcol: 'var(--mut)', cur: 'default', onToggle: null,
+        cells: mkCells(rev.map((rr, i) => fn(rr, i)), fM, false)
+      }));
+    });
+    // price chart
+    const pn = S.period === '1Y' ? 5 : S.period === '3Y' ? 12 : 20;
+    const ph = c.priceHist.slice(-pn);
+    const qLbl = i => { const qi = 20 - ph.length + i; const yr = 21 + Math.floor((qi + 2) / 4); const q = ((qi + 2) % 4) + 1; return 'Q' + q + '-' + yr; };
+    const phl = ph.map((_, i) => (i === 0 || i === ph.length - 1 || i === Math.floor(ph.length / 2)) ? (i === ph.length - 1 ? 'Now' : qLbl(i)) : '');
+    const phTips = ph.map((_, i) => i === ph.length - 1 ? 'Now' : qLbl(i));
+    // pricing chart
+    const pcLabels = ['FY22', 'FY23', 'FY24', 'FY25', 'FY26', 'FY27', 'FY28', 'FY29', 'FY30'];
+    const R0b = rev[3] / 1000;
+    const histS = [rev[0] / 1000, rev[1] / 1000, rev[2] / 1000, R0b, null, null, null, null, null];
+    const cons = [null, null, null, R0b, ...[1, 2, 3, 4, 5].map(t => R0b * Math.pow(1 + c.consG / 100, t))];
+    const impl = [null, null, null, R0b, ...[1, 2, 3, 4, 5].map(t => R0b * Math.pow(1 + implG / 100, t))];
+    // football field + bridge
+    const field = [
+      { label: 'DCF (Bear–Bull)', lo: scR.bear.ps, hi: scR.bull.ps, mid: scR.base.ps, c: C.s1 },
+      { label: 'P/E ' + c.peBand[0] + '–' + c.peBand[1] + 'x FY26E', lo: c.peBand[0] * eps26, hi: c.peBand[1] * eps26, c: C.bar },
+      { label: 'EV/EBITDA ' + c.eveBand[0] + '–' + c.eveBand[1] + 'x', lo: evps(c.eveBand[0], ebitda26), hi: evps(c.eveBand[1], ebitda26), c: C.bar },
+      { label: 'EV/Sales ' + c.evsBand[0] + '–' + c.evsBand[1] + 'x', lo: evps(c.evsBand[0], rev26), hi: evps(c.evsBand[1], rev26), c: C.bar },
+      { label: '52-week range', lo: c.wk52[0], hi: c.wk52[1], c: C.barE }
+    ];
+    const eps25 = eps[3], rf = Math.pow(1 + base.g / 100, 5);
+    const brGrowth = eps25 * (rf - 1);
+    const brMargin = eps25 * rf * (base.eb / c.B0 - 1);
+    const eps30 = scR.base.eps5;
+    const brOther = eps30 - eps25 - brGrowth - brMargin;
+    const bridge = [
+      { l: 'FY25A', v: eps25, isTotal: true },
+      { l: 'Growth', v: brGrowth },
+      { l: 'Margin', v: brMargin },
+      { l: 'Other', v: brOther },
+      { l: 'FY30E', v: eps30, isTotal: true }
+    ];
+    // peers
+    const peerHead = [['Company', 'left'], ['Mkt cap bn', 'right'], ['Rev growth', 'right'], ['EBITDA m.', 'right'], ['EBIT m.', 'right'], ['ROIC', 'right'], ['P/E', 'right'], ['EV/EBITDA', 'right'], ['EV/Sales', 'right'], ['FCF yield', 'right']].map(([l, al]) => ({ l, al }));
+    const peerCells = [];
+    this.PEERS.forEach(p => {
+      const hl = p[0] === c.ticker;
+      const bg = hl ? 'var(--accS)' : 'transparent';
+      peerCells.push({ v: p[0] + ' · ' + p[1], bg, fw: hl ? 600 : 400, al: 'left', ff: "'IBM Plex Sans',sans-serif", col: 'var(--ink)' });
+      const fmts = [v => v.toFixed(0), v => v.toFixed(1) + '%', v => v.toFixed(1) + '%', v => v.toFixed(1) + '%', v => v.toFixed(1) + '%', v => v.toFixed(1) + 'x', v => v.toFixed(1) + 'x', v => v.toFixed(1) + 'x', v => v.toFixed(1) + '%'];
+      fmts.forEach((f, i) => peerCells.push({ v: f(p[i + 2]), bg, fw: hl ? 600 : 400, al: 'right', ff: "'IBM Plex Mono',monospace", col: 'var(--ink)' }));
+    });
+    // dcf + multiples tables
+    const dcfRows = [
+      { l: 'PV of FY26–30E free cash flows', v: 'NOK ' + fB(d.pvSum) + 'bn', fw: 400, lcol: 'var(--ink)', vcol: 'var(--ink)', bord: 'var(--bor)' },
+      { l: 'PV of terminal value', v: 'NOK ' + fB(d.tvPV) + 'bn', fw: 400, lcol: 'var(--ink)', vcol: 'var(--ink)', bord: 'var(--bor)' },
+      { l: 'Enterprise value', v: 'NOK ' + fB(d.ev) + 'bn', fw: 600, lcol: 'var(--ink)', vcol: 'var(--ink)', bord: 'var(--bor2)' },
+      { l: netDebt < 0 ? 'Add: net cash position' : 'Less: net debt', v: (netDebt < 0 ? '+' : '−') + 'NOK ' + fB(Math.abs(netDebt)) + 'bn', fw: 400, lcol: 'var(--mut)', vcol: netDebt < 0 ? 'var(--pos)' : 'var(--neg)', bord: 'var(--bor)' },
+      { l: 'Equity value', v: 'NOK ' + fB(d.eq) + 'bn', fw: 600, lcol: 'var(--ink)', vcol: 'var(--ink)', bord: 'var(--bor2)' },
+      { l: 'Shares outstanding', v: SH + 'm', fw: 400, lcol: 'var(--mut)', vcol: 'var(--mut)', bord: 'var(--bor)' },
+      { l: 'Implied value per share', v: 'NOK ' + d.ps.toFixed(1), fw: 700, lcol: 'var(--ink)', vcol: 'var(--acc)', bord: 'var(--bor2)' },
+      { l: 'vs market price ' + PRICE.toFixed(2), v: (d.ps / PRICE - 1 >= 0 ? '+' : '') + ((d.ps / PRICE - 1) * 100).toFixed(1) + '%', fw: 600, lcol: 'var(--mut)', vcol: d.ps >= PRICE ? 'var(--pos)' : 'var(--neg)', bord: 'transparent' }
+    ];
+    const multRows = [
+      { m: 'P/E (FY26E EPS ' + eps26.toFixed(2) + ')', cur: pe.toFixed(1) + 'x', hist: c.hist.pe.toFixed(1) + 'x', peer: med(7).toFixed(1) + 'x', impl: (med(7) * eps26).toFixed(0) },
+      { m: 'EV/EBITDA (FY26E)', cur: evE.toFixed(1) + 'x', hist: c.hist.eve.toFixed(1) + 'x', peer: med(8).toFixed(1) + 'x', impl: evps(med(8), ebitda26).toFixed(0) },
+      { m: 'EV/Sales (FY26E)', cur: evS.toFixed(1) + 'x', hist: c.hist.evs.toFixed(1) + 'x', peer: med(9).toFixed(1) + 'x', impl: evps(med(9), rev26).toFixed(0) }
+    ];
+    // overview
+    const prem = (cur, avg, pp) => { const dd = pp ? cur - avg : (cur / avg - 1) * 100; const s = (dd >= 0 ? '+' : '−') + Math.abs(dd).toFixed(pp ? 1 : 0) + (pp ? 'pp' : '%'); return [s, Math.abs(dd) > (pp ? 0.5 : 10) ? 'var(--neg)' : 'var(--est)']; };
+    const mkVal = (m, cur, avg, peerV, fmt, pp) => { const [s, col] = prem(cur, avg, pp); return { m, cur: fmt(cur), avg: fmt(avg), peer: fmt(peerV), prem: s, premCol: col }; };
+    const fx1 = v => v.toFixed(1) + 'x', fp1 = v => v.toFixed(1) + '%';
+    const valRows = [
+      mkVal('P/E (NTM)', pe, c.hist.pe, med(7), fx1),
+      mkVal('EV / EBITDA (NTM)', evE, c.hist.eve, med(8), fx1),
+      mkVal('EV / Sales (NTM)', evS, c.hist.evs, med(9), fx1),
+      mkVal('FCF yield', fcfY, c.hist.fcfy, med(10), fp1, true),
+      mkVal('PEG (NTM)', peg, c.hist.peg, 1.9, fx1)
+    ];
+    const g25 = growth[3], ndE = netDebt / ebitda[3];
+    const ovMetrics = [
+      { l: 'Revenue', v: 'NOK ' + fB(rev[3]) + 'bn', sub: 'FY26E ' + fB(rev26) + 'bn', subCol: 'var(--mut)', tip: 'FY2025A reported revenue' },
+      { l: 'Revenue growth', v: '+' + g25.toFixed(1) + '%', sub: 'FY26E +' + growth[4].toFixed(1) + '%', subCol: 'var(--pos)', tip: 'Year-over-year revenue growth' },
+      { l: 'EBITDA', v: 'NOK ' + fB(ebitda[3]) + 'bn', sub: 'FY26E ' + fB(ebitda26) + 'bn', subCol: 'var(--mut)', tip: 'Earnings before interest, tax, depreciation & amortisation' },
+      { l: 'EBITDA margin', v: em[3].toFixed(1) + '%', sub: 'FY26E ' + em[4].toFixed(1) + '%', subCol: 'var(--pos)', tip: 'EBITDA / revenue' },
+      { l: 'EBIT margin', v: ebm[3].toFixed(1) + '%', sub: 'FY26E ' + ebm[4].toFixed(1) + '%', subCol: 'var(--pos)', tip: 'Operating profit / revenue' },
+      { l: 'EPS', v: 'NOK ' + eps25.toFixed(2), sub: 'FY26E ' + eps26.toFixed(2), subCol: 'var(--mut)', tip: 'Diluted earnings per share' },
+      { l: 'Free cash flow', v: 'NOK ' + fB(fcf25) + 'bn', sub: (fcf25 / rev[3] * 100).toFixed(1) + '% margin', subCol: 'var(--mut)', tip: 'Operating cash flow less capex' },
+      { l: 'ROIC', v: c.roic[3].toFixed(1) + '%', sub: 'FY26E ' + c.roic[4].toFixed(1) + '%', subCol: 'var(--pos)', tip: 'Return on invested capital — NOPAT / invested capital' },
+      { l: 'Net debt / EBITDA', v: (ndE < 0 ? '−' : '') + Math.abs(ndE).toFixed(1) + 'x', sub: ndE < 0 ? 'Net cash ' + fB(-netDebt) + 'bn' : 'Net debt ' + fB(netDebt) + 'bn', subCol: ndE < 0.5 ? 'var(--pos)' : 'var(--est)', tip: 'Negative = net cash position' },
+      { l: 'FCF yield', v: fcfY.toFixed(1) + '%', sub: 'vs peers ' + med(10).toFixed(1) + '%', subCol: fcfY < med(10) ? 'var(--neg)' : 'var(--pos)', tip: 'Free cash flow / market cap' }
+    ];
+    // presets
+    const myPresets = S.presets.filter(p => p.co === S.company);
+    const presetChips = myPresets.map(p => ({
+      name: p.name, ps: this.dcf(p.a).ps.toFixed(0),
+      onLoad: () => this.setState({ a: { ...p.a } }),
+      onDel: () => this.setState(s => { const list = s.presets.filter(x => x.id !== p.id); this.savePresets(list); return { presets: list }; })
+    }));
+    const navDefs = [['overview', 'Overview'], ['expectations', 'Expectations'], ['financials', 'Financials'], ['scenarios', 'Scenarios'], ['valuation', 'Valuation'], ['peers', 'Peers'], ['case', 'Investment Case']];
+    const q = S.searchQ.toLowerCase();
+    const searchList = this.PEERS.filter(p => !q || p[0].toLowerCase().includes(q) || p[1].toLowerCase().includes(q)).slice(0, 6)
+      .map(p => {
+        const loaded = !!this.CO[p[0]], sel = p[0] === c.ticker;
+        return {
+          t: p[0], n: p[1], cur: loaded ? 'pointer' : 'default',
+          tag: sel ? 'SELECTED' : loaded ? 'LOADED' : 'CONNECT API',
+          tagCol: sel ? 'var(--acc)' : loaded ? 'var(--pos)' : 'var(--mut)',
+          onPick: loaded && !sel ? (() => this.setState({ company: p[0], a: null, sc: null, expanded: {}, searchOpen: false, searchQ: '', tt: null })) : (e => e.preventDefault())
+        };
+      });
+    const assumpDefs = [
+      ['Revenue CAGR (5Y)', 'g', 0, 25, 0.1, '%', 'Compound annual revenue growth FY26–30'],
+      ['Terminal growth', 'tg', 0, 4, 0.1, '%', 'Perpetual growth beyond FY30; should not exceed long-run nominal GDP'],
+      ['EBITDA margin (terminal)', 'em', 20, 45, 0.1, '%', 'FY30 EBITDA margin; interpolated from ' + c.M0 + '% today'],
+      ['EBIT margin (terminal)', 'eb', 15, 38, 0.1, '%', 'FY30 EBIT margin; gap to EBITDA margin approximates D&A'],
+      ['Tax rate', 'tax', 15, 30, 0.5, '%', 'Cash tax rate on EBIT'],
+      ['Capex % of revenue', 'capex', 3, 12, 0.1, '%', 'Growth and maintenance capital expenditure'],
+      ['WACC', 'wacc', 6, 12, 0.1, '%', 'Weighted average cost of capital (discount rate)']
+    ];
+    const variantText = 'The market prices ~' + implG.toFixed(0) + '% revenue CAGR and terminal EBITDA margins near ' + implEm.toFixed(0) + '%; our base case assumes ' + c.consG.toFixed(0) + '% and ' + c.defA.em.toFixed(0) + '%. ' + c.variantBody.replace('{bear}', scR.bear.ps.toFixed(0)).replace('{bull}', scR.bull.ps.toFixed(0)).replace('{buy}', c.buyBelow);
+    return {
+      navItems: navDefs.map(([id, label], i) => ({
+        idx: '0' + (i + 1), label, onGo: go(id),
+        bg: S.page === id ? 'var(--accS)' : 'transparent',
+        col: S.page === id ? 'var(--acc)' : 'var(--ink)', fw: S.page === id ? 600 : 400
+      })),
+      pgOverview: S.page === 'overview', pgExpectations: S.page === 'expectations', pgFinancials: S.page === 'financials',
+      pgScenarios: S.page === 'scenarios', pgValuation: S.page === 'valuation', pgPeers: S.page === 'peers', pgCase: S.page === 'case',
+      goExpectations: go('expectations'), goScenarios: go('scenarios'),
+      coTicker: c.ticker, coName: c.name, coMeta: c.meta,
+      coPrice: PRICE.toFixed(2), coChg: c.chg, coChgCol: c.chgPos ? 'var(--pos)' : 'var(--neg)',
+      coMcap: 'NOK ' + fB(mcapM) + 'bn',
+      themeLabel: (S.theme || 'light') === 'light' ? 'Dark' : 'Light',
+      onTheme: () => { const t = (S.theme || 'light') === 'light' ? 'dark' : 'light'; document.body.dataset.theme = t; this.setState({ theme: t }); },
+      onExport: () => setTimeout(() => window.print(), 60),
+      searchQ: S.searchQ, searchOpen: S.searchOpen, searchList,
+      onSearch: e => this.setState({ searchQ: e.target.value, searchOpen: true }),
+      onSearchFocus: () => this.setState({ searchOpen: true }),
+      onSearchBlur: () => setTimeout(() => this.setState({ searchOpen: false }), 180),
+      ovMetrics, valRows,
+      valFoot: 'Enterprise value NOK ' + fB(evM) + 'bn · ' + c.valFootTail,
+      periods: ['1Y', '3Y', '5Y'].map(p => ({ l: p, onPick: () => this.setState({ period: p }), bg: S.period === p ? 'var(--accS)' : 'transparent', col: S.period === p ? 'var(--acc)' : 'var(--mut)' })),
+      chPrice: this.lc({ w: 460, h: 168, series: [{ v: ph, c: C.s1, wd: 2, n: 'Price' }], labels: phl, tipLabels: phTips, fmt: v => v.toFixed(0), tipFmt: v => 'NOK ' + v.toFixed(1), C }),
+      chRev: this.combo({ w: 400, h: 175, bars: rev.map(r => r / 1000), estFrom: 4, line: em, labels: YRS.map(y => y.slice(2)), fmt: v => v.toFixed(0), barName: 'Revenue', barFmt: v => 'NOK ' + v.toFixed(1) + 'bn', lineName: 'EBITDA margin', C }),
+      chMargins: this.lc({ w: 400, h: 175, series: [{ v: gm, c: C.txt, wd: 1.6, n: 'Gross' }, { v: em, c: C.s1, wd: 1.8, dots: true, n: 'EBITDA' }, { v: ebm, c: C.s2, wd: 1.6, n: 'EBIT' }], labels: YRS.map(y => y.slice(2)), fmt: v => v.toFixed(0) + '%', tipFmt: v => v.toFixed(1) + '%', C }),
+      chEps: this.combo({ w: 400, h: 175, bars: eps, estFrom: 4, labels: YRS.map(y => y.slice(2)), fmt: v => v.toFixed(0), barName: 'EPS', barFmt: v => 'NOK ' + v.toFixed(2), C }),
+      bullPts: c.bull.map(t => ({ t })), bearPts: c.bear.map(t => ({ t })), debateText: c.debate,
+      assumps: assumpDefs.map(([l, k, mn, mx, st, unit, tip]) => ({ l, val: a[k], min: mn, max: mx, step: st, unit, tip, onSet: setA(k) })),
+      onReset: () => this.setState({ a: { ...c.defA } }),
+      onSavePreset: () => this.setState(s => {
+        const n = s.presets.filter(p => p.co === s.company).length + 1;
+        const list = [...s.presets, { id: Date.now(), co: s.company, name: 'P' + n, a: { ...a } }];
+        this.savePresets(list); return { presets: list };
+      }),
+      hasPresets: myPresets.length > 0, noPresets: myPresets.length === 0, presetChips,
+      modelPS: d.ps.toFixed(1),
+      gapPct: (gap >= 0 ? '+' : '') + gap.toFixed(0) + '%',
+      gapCol: gap > 5 ? 'var(--neg)' : gap < -5 ? 'var(--pos)' : 'var(--est)',
+      barLo: pct(Math.min(d.ps, PRICE)), barW: (Math.abs(PRICE - d.ps) / (hi - lo) * 100).toFixed(1) + '%',
+      modelPct: pct(d.ps), pricePct: pct(PRICE),
+      assessLabel: assess[0], assessBg: assess[1], assessCol: assess[2],
+      impliedSentence: 'At the current share price of NOK ' + PRICE.toFixed(2) + ', the market appears to be pricing in approximately ' + implG.toFixed(1) + '% annual revenue growth over the next five years and an EBITDA margin expansion from ' + c.M0.toFixed(1) + '% to ' + implEm.toFixed(1) + '% — against analyst consensus of ' + c.consG.toFixed(1) + '% growth and a ' + c.defA.em.toFixed(0) + '% terminal margin.',
+      impliedStats: [
+        { l: 'Implied rev. CAGR', v: implG.toFixed(1) + '%', sub: 'cons. ' + c.consG.toFixed(1) + '%', tip: 'Revenue growth needed to justify the price, holding your other assumptions' },
+        { l: 'Implied term. margin', v: implEm.toFixed(1) + '%', sub: 'today ' + c.M0.toFixed(1) + '%', tip: 'FY30 EBITDA margin needed at consensus growth' },
+        { l: 'Implied FCF margin', v: implFcfM.toFixed(1) + '%', sub: 'today ' + (fcf25 / rev[3] * 100).toFixed(1) + '%', tip: 'FY30 FCF margin at the implied growth path' },
+        { l: 'Implied ROIC', v: implRoic.toFixed(1) + '%', sub: 'today ' + c.roic[3].toFixed(1) + '%', tip: 'FY30 return on invested capital at implied assumptions' },
+        { l: 'TV % of EV', v: (d.tvShare * 100).toFixed(0) + '%', sub: 'terminal value', tip: 'Share of enterprise value beyond the explicit forecast' }
+      ],
+      chPricing: this.lc({ w: 720, h: 210, series: [
+        { v: histS, c: C.ink, wd: 2, dots: true, n: 'Historical' },
+        { v: cons, c: C.s2, wd: 1.6, dash: '5 4', dots: true, n: 'Consensus' },
+        { v: impl, c: C.s1, wd: 2, dots: true, n: 'Market-implied' }
+      ], labels: pcLabels, fmt: v => v.toFixed(0), tipFmt: v => 'NOK ' + v.toFixed(1) + 'bn', C }),
+      finTabs: [['is', 'Income Statement'], ['bs', 'Balance Sheet'], ['cf', 'Cash Flow'], ['kpi', 'KPIs']].map(([id, l]) => ({
+        l, onPick: () => this.setState({ tab: id }), bg: S.tab === id ? 'var(--accS)' : 'transparent',
+        col: S.tab === id ? 'var(--acc)' : 'var(--mut)', fw: S.tab === id ? 600 : 400
+      })),
+      yearCols: YRS.map((y, i) => ({ l: y, col: est(i) ? 'var(--est)' : 'var(--ink)', bg: est(i) && shade ? 'var(--estBg)' : 'transparent' })),
+      finRows,
+      scCards,
+      chRange: this.rangeChart(scDefs.map(([id, name]) => ({ label: name + ' · NOK ' + scR[id].ps.toFixed(0), lo: scR[id].ps * 0.97, hi: scR[id].ps * 1.03, mid: null, c: id === 'bear' ? C.neg : id === 'bull' ? C.s3 : C.s1 })), PRICE, C, 130),
+      sensHead: tgs.map(t => ({ l: t.toFixed(1) + '%' })),
+      sensCells,
+      dcfRows, multRows, chField: this.rangeChart(field, PRICE, C),
+      chBridge: this.waterfall(bridge, C),
+      tvShareTxt: (d.tvShare * 100).toFixed(0) + '%',
+      peerHead, peerCells,
+      chScatter1: this.scatter({ pts: this.PEERS.map(p => ({ t: p[0], x: p[3], y: p[9], m: p[2], hl: p[0] === c.ticker })), xl: 'Revenue growth, %', yl: 'EV / Sales, x', fx: v => v.toFixed(0) + '%', fy: v => v.toFixed(1), C }),
+      chScatter2: this.scatter({ pts: this.PEERS.map(p => ({ t: p[0], x: p[6], y: p[8], m: p[2], hl: p[0] === c.ticker })), xl: 'ROIC, %', yl: 'EV / EBITDA, x', fx: v => v.toFixed(0) + '%', fy: v => v.toFixed(0), C }),
+      ratingTxt: c.rating,
+      thesis: c.thesis, catalysts: c.catalysts,
+      risks: c.risks.map(r => ({ ...r, sevCol: r.sev === 'HIGH' ? 'var(--neg)' : 'var(--est)' })),
+      variantText,
+      kpis: c.kpis.map(k => ({ ...k, spark: this.spark(k.vals, k.good, C), stBg: k.st === 'ON TRACK' ? 'var(--posBg)' : k.st === 'WATCH' ? 'var(--estBg)' : 'var(--negBg)', stCol: k.st === 'ON TRACK' ? 'var(--pos)' : k.st === 'WATCH' ? 'var(--est)' : 'var(--neg)' })),
+      ttOn: !!S.tt,
+      ttX: S.tt ? (Math.min(S.tt.x, (window.innerWidth || 1200) - 250) + 14) + 'px' : '0px',
+      ttY: S.tt ? (S.tt.y + 16) + 'px' : '0px',
+      ttTitle: S.tt ? S.tt.title : '', ttLines: S.tt ? S.tt.lines : []
+    };
+  }
+}
+</script>
+</body>
+</html>
