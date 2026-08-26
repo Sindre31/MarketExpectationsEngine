@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CO, PEERS, type Assumptions, type ScenarioId } from './data';
+import { CO, PEERS, type Assumptions, type Company, type ScenarioId } from './data';
 import { dcf, solve } from './engine';
+import { LiveDataError, fetchLiveCompany, searchSymbols, type SearchHit } from './live';
 import {
   DARK, LIGHT, comboChart, lineChart, rangeChart, scatterChart, sparkline, waterfallChart,
   type Palette, type TipFn, type TipLine,
@@ -40,7 +41,10 @@ const cardTitle: React.CSSProperties = {
   color: 'var(--mut)',
 };
 
-const YRS = ['FY22A', 'FY23A', 'FY24A', 'FY25A', 'FY26E', 'FY27E', 'FY28E', 'FY29E'];
+/** 8 fiscal-year labels around a company's latest actual year: FY..A ×4 then FY..E ×4 */
+const yrLabels = (fy0: number) =>
+  [-3, -2, -1, 0, 1, 2, 3, 4].map(o => 'FY' + String((fy0 + o) % 100).padStart(2, '0') + (o <= 0 ? 'A' : 'E'));
+
 const NAV: [PageId, string][] = [
   ['overview', 'Overview'],
   ['expectations', 'Expectations'],
@@ -84,6 +88,23 @@ function loadTheme(): 'light' | 'dark' {
   }
 }
 
+function loadApiKey(): string {
+  try {
+    return localStorage.getItem('mee_av_key') || '';
+  } catch {
+    return '';
+  }
+}
+
+function saveApiKey(k: string) {
+  try {
+    if (k) localStorage.setItem('mee_av_key', k);
+    else localStorage.removeItem('mee_av_key');
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function App() {
   const [page, setPage] = useState<PageId>('overview');
   const [theme, setTheme] = useState<'light' | 'dark'>(loadTheme);
@@ -97,6 +118,13 @@ export default function App() {
   const [scOver, setScOver] = useState<Record<ScenarioId, Assumptions> | null>(null);
   const [presets, setPresets] = useState<Preset[]>(loadPresets);
   const [tip, setTip] = useState<TipState | null>(null);
+  const [companies, setCompanies] = useState<Record<string, Company>>({ ...CO });
+  const [apiKey, setApiKey] = useState(loadApiKey);
+  const [keyOpen, setKeyOpen] = useState(false);
+  const [keyDraft, setKeyDraft] = useState(loadApiKey);
+  const [loadingSym, setLoadingSym] = useState<string | null>(null);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [hits, setHits] = useState<SearchHit[]>([]);
 
   useEffect(() => {
     document.body.dataset.theme = theme;
@@ -107,7 +135,21 @@ export default function App() {
     }
   }, [theme]);
 
-  const c = CO[company];
+  // debounced live symbol search
+  useEffect(() => {
+    if (!apiKey || searchQ.trim().length < 2) {
+      setHits([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      searchSymbols(searchQ.trim(), apiKey)
+        .then(setHits)
+        .catch(() => setHits([]));
+    }, 450);
+    return () => clearTimeout(t);
+  }, [searchQ, apiKey]);
+
+  const c = companies[company];
   const a = aOver || c.defA;
   const scNow = scOver || c.scDef;
   const C: Palette = theme === 'dark' ? DARK : LIGHT;
@@ -210,9 +252,6 @@ export default function App() {
 
   const myPresets = presets.filter(p => p.co === company);
 
-  const q = searchQ.toLowerCase();
-  const searchList = PEERS.filter(p => !q || p[0].toLowerCase().includes(q) || p[1].toLowerCase().includes(q)).slice(0, 6);
-
   const est = (i: number) => i >= 4;
 
   const pickCompany = (t: string) => {
@@ -222,8 +261,84 @@ export default function App() {
     setExpanded({});
     setSearchOpen(false);
     setSearchQ('');
+    setLoadErr(null);
     setTip(null);
   };
+
+  const loadLive = async (sym: string) => {
+    const t = sym.toUpperCase();
+    if (companies[t]) {
+      pickCompany(t);
+      return;
+    }
+    setLoadingSym(t);
+    setLoadErr(null);
+    try {
+      const co = await fetchLiveCompany(t, apiKey);
+      setCompanies(s => ({ ...s, [co.ticker]: co }));
+      pickCompany(co.ticker);
+    } catch (e) {
+      setLoadErr(e instanceof LiveDataError ? e.message : 'Could not load ' + t + ' — check the symbol and your API key.');
+      setSearchOpen(true);
+    } finally {
+      setLoadingSym(null);
+    }
+  };
+
+  // search dropdown rows: loaded companies first, then live matches, then a direct-load fallback
+  const q = searchQ.toLowerCase();
+  interface SearchRow {
+    t: string;
+    n: string;
+    tag: string;
+    tagCol: string;
+    action: (() => void) | null;
+  }
+  const searchRows: SearchRow[] = [];
+  Object.values(companies)
+    .filter(co => !q || co.ticker.toLowerCase().includes(q) || co.name.toLowerCase().includes(q))
+    .slice(0, 4)
+    .forEach(co => {
+      const sel = co.ticker === c.ticker;
+      searchRows.push({
+        t: co.ticker,
+        n: co.name,
+        tag: sel ? 'SELECTED' : co.live ? 'LIVE' : 'LOADED',
+        tagCol: sel ? 'var(--acc)' : 'var(--pos)',
+        action: sel ? null : () => pickCompany(co.ticker),
+      });
+    });
+  if (apiKey) {
+    hits
+      .filter(h => !companies[h.symbol.toUpperCase()])
+      .slice(0, 5)
+      .forEach(h => {
+        searchRows.push({
+          t: h.symbol,
+          n: h.name + ' · ' + h.currency,
+          tag: loadingSym === h.symbol.toUpperCase() ? 'LOADING…' : 'LOAD LIVE',
+          tagCol: 'var(--est)',
+          action: () => loadLive(h.symbol),
+        });
+      });
+    const typed = searchQ.trim().toUpperCase();
+    if (typed.length >= 1 && !companies[typed] && !hits.some(h => h.symbol.toUpperCase() === typed)) {
+      searchRows.push({
+        t: typed,
+        n: 'Load this exact symbol from the API',
+        tag: loadingSym === typed ? 'LOADING…' : 'FETCH',
+        tagCol: 'var(--mut)',
+        action: () => loadLive(typed),
+      });
+    }
+  } else {
+    PEERS.filter(p => !CO[p[0]] && (!q || p[0].toLowerCase().includes(q) || p[1].toLowerCase().includes(q)))
+      .slice(0, 3)
+      .forEach(p => searchRows.push({ t: p[0], n: p[1], tag: 'CONNECT API', tagCol: 'var(--mut)', action: () => setKeyOpen(true) }));
+    searchRows.push({ t: '', n: 'Add an Alpha Vantage API key to load any real ticker', tag: 'SET KEY', tagCol: 'var(--acc)', action: () => setKeyOpen(true) });
+  }
+
+  const YRS = yrLabels(c.fy0);
 
   return (
     <div
@@ -256,7 +371,8 @@ export default function App() {
           ))}
         </div>
         <div style={{ marginTop: 'auto', padding: '14px 18px', borderTop: '1px solid var(--bor)', fontSize: 10, color: 'var(--mut)' }}>
-          Mock dataset · NOK<br />Model v1.1 — API-ready
+          {c.live ? 'Live data · Alpha Vantage' : 'Mock dataset'} · {c.ccy}
+          <br />Model v1.2 — live API
         </div>
       </nav>
       <div data-app-col="1" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
@@ -271,9 +387,11 @@ export default function App() {
             <span style={{ fontSize: 12, color: c.chgPos ? 'var(--pos)' : 'var(--neg)' }}>{c.chg}</span>
           </div>
           <div style={{ fontSize: 11, color: 'var(--mut)', whiteSpace: 'nowrap' }}>
-            Mkt cap <span style={{ fontFamily: MONO, color: 'var(--ink)' }}>{'NOK ' + fB(mcapM) + 'bn'}</span>
+            Mkt cap <span style={{ fontFamily: MONO, color: 'var(--ink)' }}>{c.ccy + ' ' + fB(mcapM) + 'bn'}</span>
           </div>
-          <div style={{ fontSize: 10.5, color: 'var(--mut)', whiteSpace: 'nowrap' }}>Updated 26 Aug 2026 · 16:25 CET</div>
+          <div style={{ fontSize: 10.5, color: 'var(--mut)', whiteSpace: 'nowrap' }}>
+            {loadingSym ? 'Loading ' + loadingSym + '…' : 'Updated ' + c.updated + (c.live ? ' · live' : ' · mock')}
+          </div>
           <div data-print-hide="1" style={{ marginLeft: 'auto', position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
               type="text"
@@ -288,27 +406,27 @@ export default function App() {
               style={{ background: 'var(--bg)', border: '1px solid var(--bor2)', borderRadius: 4, color: 'var(--ink)', fontSize: 12, padding: '6px 10px', width: 150, maxWidth: '26vw', fontFamily: SANS }}
             />
             {searchOpen && (
-              <div style={{ position: 'absolute', top: 34, right: 0, width: 270, background: 'var(--sur)', border: '1px solid var(--bor2)', borderRadius: 5, boxShadow: '0 8px 24px rgba(0,0,0,.14)', zIndex: 50, overflow: 'hidden' }}>
-                {searchList.map(p => {
-                  const loaded = !!CO[p[0]];
-                  const sel = p[0] === c.ticker;
-                  return (
-                    <div
-                      key={p[0]}
-                      className="hov-sur2"
-                      onMouseDown={loaded && !sel ? () => pickCompany(p[0]) : e => e.preventDefault()}
-                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderBottom: '1px solid var(--bor)', cursor: loaded ? 'pointer' : 'default' }}
-                    >
-                      <div>
-                        <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 600 }}>{p[0]}</span>{' '}
-                        <span style={{ fontSize: 12 }}>{p[1]}</span>
-                      </div>
-                      <span style={{ fontSize: 9.5, color: sel ? 'var(--acc)' : loaded ? 'var(--pos)' : 'var(--mut)', fontFamily: MONO }}>
-                        {sel ? 'SELECTED' : loaded ? 'LOADED' : 'CONNECT API'}
-                      </span>
+              <div style={{ position: 'absolute', top: 34, right: 0, width: 300, background: 'var(--sur)', border: '1px solid var(--bor2)', borderRadius: 5, boxShadow: '0 8px 24px rgba(0,0,0,.14)', zIndex: 50, overflow: 'hidden' }}>
+                {loadErr && (
+                  <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--bor)', fontSize: 11, color: 'var(--neg)', background: 'var(--negBg)' }}>{loadErr}</div>
+                )}
+                {searchRows.map((r, i) => (
+                  <div
+                    key={r.t + i}
+                    className="hov-sur2"
+                    onMouseDown={e => {
+                      e.preventDefault();
+                      if (r.action) r.action();
+                    }}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--bor)', cursor: r.action ? 'pointer' : 'default' }}
+                  >
+                    <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {r.t && <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 600 }}>{r.t}</span>}{' '}
+                      <span style={{ fontSize: 12 }}>{r.n}</span>
                     </div>
-                  );
-                })}
+                    <span style={{ fontSize: 9.5, color: r.tagCol, fontFamily: MONO, flexShrink: 0 }}>{r.tag}</span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -329,17 +447,75 @@ export default function App() {
           >
             {theme === 'light' ? 'Dark' : 'Light'}
           </button>
+          <div data-print-hide="1" style={{ position: 'relative' }}>
+            <button
+              className="hov-ink"
+              onClick={() => {
+                setKeyDraft(apiKey);
+                setKeyOpen(!keyOpen);
+              }}
+              title="Configure the Alpha Vantage API key used for live data"
+              style={{ background: 'var(--sur)', border: '1px solid var(--bor2)', color: apiKey ? 'var(--pos)' : 'var(--mut)', borderRadius: 4, padding: '6px 12px', fontSize: 11.5, cursor: 'pointer', fontFamily: SANS }}
+            >
+              {apiKey ? 'API ●' : 'API ○'}
+            </button>
+            {keyOpen && (
+              <div style={{ position: 'absolute', top: 34, right: 0, width: 290, background: 'var(--sur)', border: '1px solid var(--bor2)', borderRadius: 5, boxShadow: '0 8px 24px rgba(0,0,0,.14)', zIndex: 50, padding: '12px 14px' }}>
+                <div style={{ ...cardTitle, marginBottom: 6 }}>Live data · Alpha Vantage</div>
+                <div style={{ fontSize: 11, color: 'var(--mut)', marginBottom: 8 }}>
+                  Paste a free API key from{' '}
+                  <a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noreferrer">alphavantage.co</a>{' '}
+                  to search and load any real ticker. The key is stored only in this browser.
+                </div>
+                <input
+                  type="text"
+                  value={keyDraft}
+                  onChange={e => setKeyDraft(e.target.value)}
+                  placeholder="API key…"
+                  style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg)', border: '1px solid var(--bor2)', borderRadius: 4, color: 'var(--ink)', fontSize: 12, padding: '6px 10px', fontFamily: MONO, marginBottom: 8 }}
+                />
+                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                  {apiKey && (
+                    <button
+                      className="hov-ink"
+                      onClick={() => {
+                        setApiKey('');
+                        setKeyDraft('');
+                        saveApiKey('');
+                        setKeyOpen(false);
+                      }}
+                      style={{ background: 'none', border: '1px solid var(--bor2)', color: 'var(--mut)', borderRadius: 3, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: SANS }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                  <button
+                    className="hov-accS"
+                    onClick={() => {
+                      const k = keyDraft.trim();
+                      setApiKey(k);
+                      saveApiKey(k);
+                      setKeyOpen(false);
+                    }}
+                    style={{ background: 'none', border: '1px solid var(--bor2)', color: 'var(--acc)', borderRadius: 3, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: SANS }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </header>
         <main data-main="1" style={{ flex: 1, overflowY: 'auto', padding: '24px 26px 48px' }}>
           <div style={{ maxWidth: 1280, margin: '0 auto' }}>
             {page === 'overview' && (
-              <OverviewPage {...{ c, C, tt, go, period, setPeriod, rev, em, gm, ebm, eps, eps25, eps26, ebitda, ebitda26, rev26, fcf25, growth, evM, netDebt, pe, evE, evS, fcfY, peg, med, mcapM }} />
+              <OverviewPage {...{ c, C, tt, go, period, setPeriod, rev, em, gm, ebm, eps, eps25, eps26, ebitda, ebitda26, rev26, fcf25, growth, evM, netDebt, pe, evE, evS, fcfY, peg, med, mcapM, YRS }} />
             )}
             {page === 'expectations' && (
               <ExpectationsPage {...{ c, C, tt, a, d, setA, implG, implEm, implFcfM, implRoic, gap, assess, pct, PRICE, myPresets, presets, setPresets, setAOver, rev, fcf25, gapColor: gap > 5 ? 'var(--neg)' : gap < -5 ? 'var(--pos)' : 'var(--est)', barLoV, barHiV }} />
             )}
             {page === 'financials' && (
-              <FinancialsPage {...{ c, tab, setTab, expanded, setExpanded, rev, gm, em, ebm, ebitda, ebit, ni, eps, capex, ocf, fcf, growth, est }} />
+              <FinancialsPage {...{ c, tab, setTab, expanded, setExpanded, rev, gm, em, ebm, ebitda, ebit, ni, eps, capex, ocf, fcf, growth, est, YRS }} />
             )}
             {page === 'scenarios' && (
               <ScenariosPage {...{ c, C, tt, scNow, scR, scDefs, setSc, setAOver, setPage, PRICE }} />
@@ -367,7 +543,8 @@ export default function App() {
 // ---------------------------------------------------------------- overview
 
 function OverviewPage(P: any) {
-  const { c, C, tt, go, period, setPeriod, rev, em, gm, ebm, eps, eps25, eps26, ebitda, ebitda26, rev26, fcf25, growth, evM, netDebt, pe, evE, evS, fcfY, peg, med, mcapM } = P;
+  const { c, C, tt, go, period, setPeriod, rev, em, gm, ebm, eps, eps25, eps26, ebitda, ebitda26, rev26, fcf25, growth, evM, netDebt, pe, evE, evS, fcfY, peg, med, mcapM, YRS } = P;
+  const ccy = c.ccy;
   const fx1 = (v: number) => v.toFixed(1) + 'x';
   const fp1 = (v: number) => v.toFixed(1) + '%';
   const prem = (cur: number, avg: number, pp?: boolean): [string, string] => {
@@ -388,26 +565,28 @@ function OverviewPage(P: any) {
   ];
   const g25 = growth[3];
   const ndE = netDebt / ebitda[3];
+  const fy1 = YRS[4].slice(0, 4); // e.g. "FY26"
   const ovMetrics = [
-    { l: 'Revenue', v: 'NOK ' + fB(rev[3]) + 'bn', sub: 'FY26E ' + fB(rev26) + 'bn', subCol: 'var(--mut)', tip: 'FY2025A reported revenue' },
-    { l: 'Revenue growth', v: '+' + g25.toFixed(1) + '%', sub: 'FY26E +' + growth[4].toFixed(1) + '%', subCol: 'var(--pos)', tip: 'Year-over-year revenue growth' },
-    { l: 'EBITDA', v: 'NOK ' + fB(ebitda[3]) + 'bn', sub: 'FY26E ' + fB(ebitda26) + 'bn', subCol: 'var(--mut)', tip: 'Earnings before interest, tax, depreciation & amortisation' },
-    { l: 'EBITDA margin', v: em[3].toFixed(1) + '%', sub: 'FY26E ' + em[4].toFixed(1) + '%', subCol: 'var(--pos)', tip: 'EBITDA / revenue' },
-    { l: 'EBIT margin', v: ebm[3].toFixed(1) + '%', sub: 'FY26E ' + ebm[4].toFixed(1) + '%', subCol: 'var(--pos)', tip: 'Operating profit / revenue' },
-    { l: 'EPS', v: 'NOK ' + eps25.toFixed(2), sub: 'FY26E ' + eps26.toFixed(2), subCol: 'var(--mut)', tip: 'Diluted earnings per share' },
-    { l: 'Free cash flow', v: 'NOK ' + fB(fcf25) + 'bn', sub: ((fcf25 / rev[3]) * 100).toFixed(1) + '% margin', subCol: 'var(--mut)', tip: 'Operating cash flow less capex' },
-    { l: 'ROIC', v: c.roic[3].toFixed(1) + '%', sub: 'FY26E ' + c.roic[4].toFixed(1) + '%', subCol: 'var(--pos)', tip: 'Return on invested capital — NOPAT / invested capital' },
+    { l: 'Revenue', v: ccy + ' ' + fB(rev[3]) + 'bn', sub: fy1 + 'E ' + fB(rev26) + 'bn', subCol: 'var(--mut)', tip: 'FY' + c.fy0 + 'A reported revenue' },
+    { l: 'Revenue growth', v: (g25 >= 0 ? '+' : '') + g25.toFixed(1) + '%', sub: fy1 + 'E ' + (growth[4] >= 0 ? '+' : '') + growth[4].toFixed(1) + '%', subCol: 'var(--pos)', tip: 'Year-over-year revenue growth' },
+    { l: 'EBITDA', v: ccy + ' ' + fB(ebitda[3]) + 'bn', sub: fy1 + 'E ' + fB(ebitda26) + 'bn', subCol: 'var(--mut)', tip: 'Earnings before interest, tax, depreciation & amortisation' },
+    { l: 'EBITDA margin', v: em[3].toFixed(1) + '%', sub: fy1 + 'E ' + em[4].toFixed(1) + '%', subCol: 'var(--pos)', tip: 'EBITDA / revenue' },
+    { l: 'EBIT margin', v: ebm[3].toFixed(1) + '%', sub: fy1 + 'E ' + ebm[4].toFixed(1) + '%', subCol: 'var(--pos)', tip: 'Operating profit / revenue' },
+    { l: 'EPS', v: ccy + ' ' + eps25.toFixed(2), sub: fy1 + 'E ' + eps26.toFixed(2), subCol: 'var(--mut)', tip: 'Diluted earnings per share' },
+    { l: 'Free cash flow', v: ccy + ' ' + fB(fcf25) + 'bn', sub: ((fcf25 / rev[3]) * 100).toFixed(1) + '% margin', subCol: 'var(--mut)', tip: 'Operating cash flow less capex' },
+    { l: 'ROIC', v: c.roic[3].toFixed(1) + '%', sub: fy1 + 'E ' + c.roic[4].toFixed(1) + '%', subCol: 'var(--pos)', tip: 'Return on invested capital — NOPAT / invested capital' },
     { l: 'Net debt / EBITDA', v: (ndE < 0 ? '−' : '') + Math.abs(ndE).toFixed(1) + 'x', sub: ndE < 0 ? 'Net cash ' + fB(-netDebt) + 'bn' : 'Net debt ' + fB(netDebt) + 'bn', subCol: ndE < 0.5 ? 'var(--pos)' : 'var(--est)', tip: 'Negative = net cash position' },
     { l: 'FCF yield', v: fcfY.toFixed(1) + '%', sub: 'vs peers ' + med(10).toFixed(1) + '%', subCol: fcfY < med(10) ? 'var(--neg)' : 'var(--pos)', tip: 'Free cash flow / market cap' },
   ];
   // price chart
   const pn = period === '1Y' ? 5 : period === '3Y' ? 12 : 20;
   const ph = c.priceHist.slice(-pn);
+  // label a price point by its calendar quarter, counting back from now
   const qLbl = (i: number) => {
-    const qi = 20 - ph.length + i;
-    const yr = 21 + Math.floor((qi + 2) / 4);
-    const qq = ((qi + 2) % 4) + 1;
-    return 'Q' + qq + '-' + yr;
+    const back = ph.length - 1 - i;
+    const now = new Date();
+    const dt = new Date(now.getFullYear(), now.getMonth() - back * 3, 1);
+    return 'Q' + (Math.floor(dt.getMonth() / 3) + 1) + '-' + String(dt.getFullYear() % 100).padStart(2, '0');
   };
   const phl = ph.map((_: number, i: number) =>
     i === 0 || i === ph.length - 1 || i === Math.floor(ph.length / 2) ? (i === ph.length - 1 ? 'Now' : qLbl(i)) : '',
@@ -418,7 +597,9 @@ function OverviewPage(P: any) {
     <>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
         <h1 style={{ fontSize: 19, fontWeight: 600, margin: 0 }}>Company overview</h1>
-        <span style={{ fontSize: 11, color: 'var(--mut)' }}>FY2025A reported · FY2026E consensus</span>
+        <span style={{ fontSize: 11, color: 'var(--mut)' }}>
+          {'FY' + c.fy0 + 'A reported · FY' + (c.fy0 + 1) + 'E ' + (c.live ? 'extrapolated' : 'consensus')}
+        </span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10, marginBottom: 10 }}>
         {ovMetrics.map((m: any) => (
@@ -447,12 +628,12 @@ function OverviewPage(P: any) {
             ))}
           </div>
           <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 10 }}>
-            {'Enterprise value NOK ' + fB(evM) + 'bn · ' + c.valFootTail}
+            {'Enterprise value ' + ccy + ' ' + fB(evM) + 'bn · ' + c.valFootTail}
           </div>
         </div>
         <div style={{ ...card, padding: '16px 18px', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <div style={cardTitle}>Share price · NOK</div>
+            <div style={cardTitle}>{'Share price · ' + ccy}</div>
             <div style={{ display: 'flex', gap: 2 }}>
               {(['1Y', '3Y', '5Y'] as const).map(p => (
                 <button
@@ -466,19 +647,19 @@ function OverviewPage(P: any) {
             </div>
           </div>
           <div style={{ flex: 1 }}>
-            {lineChart({ w: 460, h: 168, series: [{ v: ph, c: C.s1, wd: 2, n: 'Price' }], labels: phl, tipLabels: phTips, fmt: v => v.toFixed(0), tipFmt: v => 'NOK ' + v.toFixed(1), C }, tt)}
+            {lineChart({ w: 460, h: 168, series: [{ v: ph, c: C.s1, wd: 2, n: 'Price' }], labels: phl, tipLabels: phTips, fmt: v => v.toFixed(0), tipFmt: v => ccy + ' ' + v.toFixed(1), C }, tt)}
           </div>
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         <div style={{ ...card, padding: '16px 18px' }}>
           <div style={{ ...cardTitle, marginBottom: 8 }}>Revenue &amp; EBITDA margin</div>
-          {comboChart({ w: 400, h: 175, bars: rev.map((r: number) => r / 1000), estFrom: 4, line: em, labels: YRS.map(y => y.slice(2)), fmt: v => v.toFixed(0), barName: 'Revenue', barFmt: v => 'NOK ' + v.toFixed(1) + 'bn', lineName: 'EBITDA margin', C }, tt)}
-          <div style={{ fontSize: 10, color: 'var(--mut)', marginTop: 6 }}>Bars: revenue, NOK bn · Line: EBITDA margin (rhs)</div>
+          {comboChart({ w: 400, h: 175, bars: rev.map((r: number) => r / 1000), estFrom: 4, line: em, labels: YRS.map((y: string) => y.slice(2)), fmt: v => v.toFixed(0), barName: 'Revenue', barFmt: v => ccy + ' ' + v.toFixed(1) + 'bn', lineName: 'EBITDA margin', C }, tt)}
+          <div style={{ fontSize: 10, color: 'var(--mut)', marginTop: 6 }}>{'Bars: revenue, ' + ccy + ' bn · Line: EBITDA margin (rhs)'}</div>
         </div>
         <div style={{ ...card, padding: '16px 18px' }}>
           <div style={{ ...cardTitle, marginBottom: 8 }}>Margin development · %</div>
-          {lineChart({ w: 400, h: 175, series: [{ v: gm, c: C.txt, wd: 1.6, n: 'Gross' }, { v: em, c: C.s1, wd: 1.8, dots: true, n: 'EBITDA' }, { v: ebm, c: C.s2, wd: 1.6, n: 'EBIT' }], labels: YRS.map(y => y.slice(2)), fmt: v => v.toFixed(0) + '%', tipFmt: v => v.toFixed(1) + '%', C }, tt)}
+          {lineChart({ w: 400, h: 175, series: [{ v: gm, c: C.txt, wd: 1.6, n: 'Gross' }, { v: em, c: C.s1, wd: 1.8, dots: true, n: 'EBITDA' }, { v: ebm, c: C.s2, wd: 1.6, n: 'EBIT' }], labels: YRS.map((y: string) => y.slice(2)), fmt: v => v.toFixed(0) + '%', tipFmt: v => v.toFixed(1) + '%', C }, tt)}
           <div style={{ display: 'flex', gap: 14, fontSize: 10, color: 'var(--mut)', marginTop: 6 }}>
             <span>— Gross</span>
             <span style={{ color: 'var(--acc)' }}>— EBITDA</span>
@@ -486,9 +667,9 @@ function OverviewPage(P: any) {
           </div>
         </div>
         <div style={{ ...card, padding: '16px 18px' }}>
-          <div style={{ ...cardTitle, marginBottom: 8 }}>EPS development · NOK</div>
-          {comboChart({ w: 400, h: 175, bars: eps, estFrom: 4, labels: YRS.map(y => y.slice(2)), fmt: v => v.toFixed(0), barName: 'EPS', barFmt: v => 'NOK ' + v.toFixed(2), C }, tt)}
-          <div style={{ fontSize: 10, color: 'var(--mut)', marginTop: 6 }}>Shaded bars are consensus estimates</div>
+          <div style={{ ...cardTitle, marginBottom: 8 }}>{'EPS development · ' + ccy}</div>
+          {comboChart({ w: 400, h: 175, bars: eps, estFrom: 4, labels: YRS.map((y: string) => y.slice(2)), fmt: v => v.toFixed(0), barName: 'EPS', barFmt: v => ccy + ' ' + v.toFixed(2), C }, tt)}
+          <div style={{ fontSize: 10, color: 'var(--mut)', marginTop: 6 }}>{c.live ? 'Shaded bars are extrapolated estimates' : 'Shaded bars are consensus estimates'}</div>
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: 10 }}>
@@ -526,6 +707,7 @@ function OverviewPage(P: any) {
 
 function ExpectationsPage(P: any) {
   const { c, C, tt, a, d, setA, implG, implEm, implFcfM, implRoic, gap, assess, pct, PRICE, myPresets, presets, setPresets, setAOver, rev, fcf25, gapColor, barLoV, barHiV } = P;
+  const ccy = c.ccy;
   const assumpDefs: [string, keyof Assumptions, number, number, number, string, string][] = [
     ['Revenue CAGR (5Y)', 'g', 0, 25, 0.1, '%', 'Compound annual revenue growth FY26–30'],
     ['Terminal growth', 'tg', 0, 4, 0.1, '%', 'Perpetual growth beyond FY30; should not exceed long-run nominal GDP'],
@@ -543,7 +725,7 @@ function ExpectationsPage(P: any) {
     { l: 'TV % of EV', v: (d.tvShare * 100).toFixed(0) + '%', sub: 'terminal value', tip: 'Share of enterprise value beyond the explicit forecast' },
   ];
   // "what the market is pricing in" chart
-  const pcLabels = ['FY22', 'FY23', 'FY24', 'FY25', 'FY26', 'FY27', 'FY28', 'FY29', 'FY30'];
+  const pcLabels = [-3, -2, -1, 0, 1, 2, 3, 4, 5].map(o => 'FY' + String((c.fy0 + o) % 100).padStart(2, '0'));
   const R0b = rev[3] / 1000;
   const histS = [rev[0] / 1000, rev[1] / 1000, rev[2] / 1000, R0b, null, null, null, null, null];
   const cons = [null, null, null, R0b, ...[1, 2, 3, 4, 5].map(t => R0b * Math.pow(1 + c.consG / 100, t))];
@@ -561,7 +743,7 @@ function ExpectationsPage(P: any) {
       <div style={{ marginBottom: 16 }}>
         <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px' }}>What does the current share price imply?</h1>
         <div style={{ fontSize: 12.5, color: 'var(--mut)' }}>
-          Reverse DCF — instead of estimating value, solve for the expectations embedded in NOK {PRICE.toFixed(2)}.
+          Reverse DCF — instead of estimating value, solve for the expectations embedded in {ccy} {PRICE.toFixed(2)}.
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 12, alignItems: 'start' }}>
@@ -662,7 +844,7 @@ function ExpectationsPage(P: any) {
               <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', padding: '3px 9px', borderRadius: 3, background: assess[1], color: assess[2], fontFamily: MONO }}>{assess[0]}</span>
             </div>
             <div style={{ fontSize: 14, lineHeight: 1.55 }}>
-              {'At the current share price of NOK ' + PRICE.toFixed(2) + ', the market appears to be pricing in approximately ' + implG.toFixed(1) + '% annual revenue growth over the next five years and an EBITDA margin expansion from ' + c.M0.toFixed(1) + '% to ' + implEm.toFixed(1) + '% — against analyst consensus of ' + c.consG.toFixed(1) + '% growth and a ' + c.defA.em.toFixed(0) + '% terminal margin.'}
+              {'At the current share price of ' + ccy + ' ' + PRICE.toFixed(2) + ', the market appears to be pricing in approximately ' + implG.toFixed(1) + '% annual revenue growth over the next five years and an EBITDA margin expansion from ' + c.M0.toFixed(1) + '% to ' + implEm.toFixed(1) + '% — against ' + (c.live ? 'a historical-trend baseline' : 'analyst consensus') + ' of ' + c.consG.toFixed(1) + '% growth and a ' + c.defA.em.toFixed(0) + '% terminal margin.'}
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10 }}>
@@ -676,10 +858,10 @@ function ExpectationsPage(P: any) {
           </div>
           <div style={{ ...card, padding: '16px 18px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <div style={cardTitle}>What the market is pricing in · revenue, NOK bn</div>
+              <div style={cardTitle}>{'What the market is pricing in · revenue, ' + ccy + ' bn'}</div>
               <div style={{ display: 'flex', gap: 14, fontSize: 10, color: 'var(--mut)' }}>
                 <span>— Historical</span>
-                <span style={{ color: 'var(--est)' }}>- - Analyst consensus</span>
+                <span style={{ color: 'var(--est)' }}>{c.live ? '- - Trend baseline' : '- - Analyst consensus'}</span>
                 <span style={{ color: 'var(--acc)' }}>— Market-implied</span>
               </div>
             </div>
@@ -687,7 +869,7 @@ function ExpectationsPage(P: any) {
               { v: histS, c: C.ink, wd: 2, dots: true, n: 'Historical' },
               { v: cons, c: C.s2, wd: 1.6, dash: '5 4', dots: true, n: 'Consensus' },
               { v: impl, c: C.s1, wd: 2, dots: true, n: 'Market-implied' },
-            ], labels: pcLabels, fmt: v => v.toFixed(0), tipFmt: v => 'NOK ' + v.toFixed(1) + 'bn', C }, tt)}
+            ], labels: pcLabels, fmt: v => v.toFixed(0), tipFmt: v => ccy + ' ' + v.toFixed(1) + 'bn', C }, tt)}
           </div>
         </div>
       </div>
@@ -698,8 +880,9 @@ function ExpectationsPage(P: any) {
 // -------------------------------------------------------------- financials
 
 function FinancialsPage(P: any) {
-  const { c, tab, setTab, expanded, setExpanded, rev, gm, em, ebm, ebitda, ebit, ni, eps, capex, ocf, fcf, growth, est } = P;
+  const { c, tab, setTab, expanded, setExpanded, rev, gm, em, ebm, ebitda, ebit, ni, eps, capex, ocf, fcf, growth, est, YRS } = P;
   const shade = true;
+  const hasSegs = c.segs.length > 0;
 
   interface FinRowDef {
     id: string;
@@ -714,7 +897,7 @@ function FinancialsPage(P: any) {
     ({ id, label, vals, fmt, ...o });
 
   const isRows: FinRowDef[] = [
-    row('rev', 'Revenue', rev, fM, { bold: 1, exp: 1 }),
+    row('rev', 'Revenue', rev, fM, hasSegs ? { bold: 1, exp: 1 } : { bold: 1 }),
     row('g', 'YoY growth %', growth, pctF, { sub: 1 }),
     row('gp', 'Gross profit', rev.map((r: number, i: number) => (r * gm[i]) / 100), fM),
     row('gpm', 'Gross margin %', gm, pctF, { sub: 1 }),
@@ -726,7 +909,7 @@ function FinancialsPage(P: any) {
     row('fin', 'Net financials', rev.map((_r: number, i: number) => (c.cash[i] - c.debt) * 0.03), fM),
     row('tax', 'Tax (22%)', ebit.map((e: number) => -e * 0.22), fM),
     row('ni', 'Net income', ni, fM, { bold: 1 }),
-    row('eps', 'EPS · NOK', eps, (v: number) => v.toFixed(2), { bold: 1 }),
+    row('eps', 'EPS · ' + c.ccy, eps, (v: number) => v.toFixed(2), { bold: 1 }),
   ];
   const bsRows: FinRowDef[] = [
     row('cash', 'Cash & equivalents', c.cash, fM),
@@ -818,8 +1001,8 @@ function FinancialsPage(P: any) {
       <div style={{ ...card, overflowX: 'auto' }}>
         <div style={{ minWidth: 980 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '230px repeat(8,1fr)', borderBottom: '1px solid var(--bor2)', background: 'var(--sur)' }}>
-            <div style={{ padding: '9px 16px', ...cardTitle }}>NOK m unless stated</div>
-            {YRS.map((y, i) => (
+            <div style={{ padding: '9px 16px', ...cardTitle }}>{c.ccy + ' m unless stated'}</div>
+            {YRS.map((y: string, i: number) => (
               <div key={y} style={{ padding: '9px 12px', textAlign: 'right', fontFamily: MONO, fontSize: 11, fontWeight: 600, color: est(i) ? 'var(--est)' : 'var(--ink)', background: est(i) && shade ? 'var(--estBg)' : 'transparent' }}>{y}</div>
             ))}
           </div>
@@ -827,7 +1010,7 @@ function FinancialsPage(P: any) {
         </div>
       </div>
       <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 8 }}>
-        A = actual · E = estimate (shaded). Click Revenue to expand segment detail.
+        {'A = actual · E = estimate (shaded).' + (hasSegs ? ' Click Revenue to expand segment detail.' : c.live ? ' Estimates are trend extrapolations from reported filings.' : '')}
       </div>
     </>
   );
@@ -866,7 +1049,7 @@ function ScenariosPage(P: any) {
             { l: 'FCF FY30E', v: fB(r.fcf5) + 'bn', col: 'var(--ink)', fw: 400 },
             { l: 'Enterprise value', v: fB(r.ev) + 'bn', col: 'var(--ink)', fw: 400 },
             { l: 'Equity value', v: fB(r.eq) + 'bn', col: 'var(--ink)', fw: 400 },
-            { l: 'Implied price', v: 'NOK ' + r.ps.toFixed(0), col: tone, fw: 600 },
+            { l: 'Implied price', v: c.ccy + ' ' + r.ps.toFixed(0), col: tone, fw: 600 },
             { l: 'Upside', v: (up >= 0 ? '+' : '') + up.toFixed(0) + '%', col: up >= 0 ? 'var(--pos)' : 'var(--neg)', fw: 600 },
           ];
           return (
@@ -910,21 +1093,21 @@ function ScenariosPage(P: any) {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 10 }}>
         <div style={{ ...card, padding: '16px 18px' }}>
-          <div style={{ ...cardTitle, marginBottom: 10 }}>Valuation range · NOK per share</div>
+          <div style={{ ...cardTitle, marginBottom: 10 }}>{'Valuation range · ' + c.ccy + ' per share'}</div>
           {rangeChart(
             scDefs.map(([id, name]: [ScenarioId, string]) => ({
-              label: name + ' · NOK ' + scR[id].ps.toFixed(0),
+              label: name + ' · ' + c.ccy + ' ' + scR[id].ps.toFixed(0),
               lo: scR[id].ps * 0.97,
               hi: scR[id].ps * 1.03,
               mid: null,
               c: id === 'bear' ? C.neg : id === 'bull' ? C.s3 : C.s1,
             })),
-            PRICE, C, tt, 130,
+            PRICE, C, tt, 130, c.ccy,
           )}
           <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 8 }}>Dashed marker: current price {PRICE.toFixed(2)}.</div>
         </div>
         <div style={{ ...card, padding: '16px 18px' }}>
-          <div style={{ ...cardTitle, marginBottom: 10 }}>Sensitivity · WACC × terminal growth (base case, NOK/share)</div>
+          <div style={{ ...cardTitle, marginBottom: 10 }}>{'Sensitivity · WACC × terminal growth (base case, ' + c.ccy + '/share)'}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 2, fontFamily: MONO, fontSize: 11 }}>
             <div style={{ padding: 5, color: 'var(--mut)', fontSize: 9.5 }}>WACC \ g∞</div>
             {tgs.map(t => (
@@ -940,7 +1123,7 @@ function ScenariosPage(P: any) {
                   return (
                     <div
                       key={tv}
-                      title={'WACC ' + wv + '% · terminal growth ' + tv + '% → NOK ' + ps.toFixed(0)}
+                      title={'WACC ' + wv + '% · terminal growth ' + tv + '% → ' + c.ccy + ' ' + ps.toFixed(0)}
                       style={{
                         padding: '6px 4px', textAlign: 'center', borderRadius: 3,
                         background: rel > 1.05 ? 'var(--posBg)' : rel < 0.95 ? 'var(--negBg)' : 'var(--sur2)',
@@ -969,24 +1152,27 @@ function ScenariosPage(P: any) {
 
 function ValuationPage(P: any) {
   const { c, C, tt, d, go, netDebt, PRICE, SH, eps25, eps26, ebitda26, rev26, pe, evE, evS, med, evps, scR, scNow } = P;
+  const ccy = c.ccy;
+  const fy1 = 'FY' + String((c.fy0 + 1) % 100).padStart(2, '0');
+  const fy5 = 'FY' + String((c.fy0 + 5) % 100).padStart(2, '0');
   const dcfRows = [
-    { l: 'PV of FY26–30E free cash flows', v: 'NOK ' + fB(d.pvSum) + 'bn', fw: 400, lcol: 'var(--ink)', vcol: 'var(--ink)', bord: 'var(--bor)' },
-    { l: 'PV of terminal value', v: 'NOK ' + fB(d.tvPV) + 'bn', fw: 400, lcol: 'var(--ink)', vcol: 'var(--ink)', bord: 'var(--bor)' },
-    { l: 'Enterprise value', v: 'NOK ' + fB(d.ev) + 'bn', fw: 600, lcol: 'var(--ink)', vcol: 'var(--ink)', bord: 'var(--bor2)' },
-    { l: netDebt < 0 ? 'Add: net cash position' : 'Less: net debt', v: (netDebt < 0 ? '+' : '−') + 'NOK ' + fB(Math.abs(netDebt)) + 'bn', fw: 400, lcol: 'var(--mut)', vcol: netDebt < 0 ? 'var(--pos)' : 'var(--neg)', bord: 'var(--bor)' },
-    { l: 'Equity value', v: 'NOK ' + fB(d.eq) + 'bn', fw: 600, lcol: 'var(--ink)', vcol: 'var(--ink)', bord: 'var(--bor2)' },
+    { l: 'PV of ' + fy1 + '–' + fy5 + 'E free cash flows', v: ccy + ' ' + fB(d.pvSum) + 'bn', fw: 400, lcol: 'var(--ink)', vcol: 'var(--ink)', bord: 'var(--bor)' },
+    { l: 'PV of terminal value', v: ccy + ' ' + fB(d.tvPV) + 'bn', fw: 400, lcol: 'var(--ink)', vcol: 'var(--ink)', bord: 'var(--bor)' },
+    { l: 'Enterprise value', v: ccy + ' ' + fB(d.ev) + 'bn', fw: 600, lcol: 'var(--ink)', vcol: 'var(--ink)', bord: 'var(--bor2)' },
+    { l: netDebt < 0 ? 'Add: net cash position' : 'Less: net debt', v: (netDebt < 0 ? '+' : '−') + ccy + ' ' + fB(Math.abs(netDebt)) + 'bn', fw: 400, lcol: 'var(--mut)', vcol: netDebt < 0 ? 'var(--pos)' : 'var(--neg)', bord: 'var(--bor)' },
+    { l: 'Equity value', v: ccy + ' ' + fB(d.eq) + 'bn', fw: 600, lcol: 'var(--ink)', vcol: 'var(--ink)', bord: 'var(--bor2)' },
     { l: 'Shares outstanding', v: SH + 'm', fw: 400, lcol: 'var(--mut)', vcol: 'var(--mut)', bord: 'var(--bor)' },
-    { l: 'Implied value per share', v: 'NOK ' + d.ps.toFixed(1), fw: 700, lcol: 'var(--ink)', vcol: 'var(--acc)', bord: 'var(--bor2)' },
+    { l: 'Implied value per share', v: ccy + ' ' + d.ps.toFixed(1), fw: 700, lcol: 'var(--ink)', vcol: 'var(--acc)', bord: 'var(--bor2)' },
     { l: 'vs market price ' + PRICE.toFixed(2), v: (d.ps / PRICE - 1 >= 0 ? '+' : '') + ((d.ps / PRICE - 1) * 100).toFixed(1) + '%', fw: 600, lcol: 'var(--mut)', vcol: d.ps >= PRICE ? 'var(--pos)' : 'var(--neg)', bord: 'transparent' },
   ];
   const multRows = [
-    { m: 'P/E (FY26E EPS ' + eps26.toFixed(2) + ')', cur: pe.toFixed(1) + 'x', hist: c.hist.pe.toFixed(1) + 'x', peer: med(7).toFixed(1) + 'x', impl: (med(7) * eps26).toFixed(0) },
-    { m: 'EV/EBITDA (FY26E)', cur: evE.toFixed(1) + 'x', hist: c.hist.eve.toFixed(1) + 'x', peer: med(8).toFixed(1) + 'x', impl: evps(med(8), ebitda26).toFixed(0) },
-    { m: 'EV/Sales (FY26E)', cur: evS.toFixed(1) + 'x', hist: c.hist.evs.toFixed(1) + 'x', peer: med(9).toFixed(1) + 'x', impl: evps(med(9), rev26).toFixed(0) },
+    { m: 'P/E (' + fy1 + 'E EPS ' + eps26.toFixed(2) + ')', cur: pe.toFixed(1) + 'x', hist: c.hist.pe.toFixed(1) + 'x', peer: med(7).toFixed(1) + 'x', impl: (med(7) * eps26).toFixed(0) },
+    { m: 'EV/EBITDA (' + fy1 + 'E)', cur: evE.toFixed(1) + 'x', hist: c.hist.eve.toFixed(1) + 'x', peer: med(8).toFixed(1) + 'x', impl: evps(med(8), ebitda26).toFixed(0) },
+    { m: 'EV/Sales (' + fy1 + 'E)', cur: evS.toFixed(1) + 'x', hist: c.hist.evs.toFixed(1) + 'x', peer: med(9).toFixed(1) + 'x', impl: evps(med(9), rev26).toFixed(0) },
   ];
   const field = [
     { label: 'DCF (Bear–Bull)', lo: scR.bear.ps, hi: scR.bull.ps, mid: scR.base.ps, c: C.s1 },
-    { label: 'P/E ' + c.peBand[0] + '–' + c.peBand[1] + 'x FY26E', lo: c.peBand[0] * eps26, hi: c.peBand[1] * eps26, c: C.bar },
+    { label: 'P/E ' + c.peBand[0] + '–' + c.peBand[1] + 'x ' + fy1 + 'E', lo: c.peBand[0] * eps26, hi: c.peBand[1] * eps26, c: C.bar },
     { label: 'EV/EBITDA ' + c.eveBand[0] + '–' + c.eveBand[1] + 'x', lo: evps(c.eveBand[0], ebitda26), hi: evps(c.eveBand[1], ebitda26), c: C.bar },
     { label: 'EV/Sales ' + c.evsBand[0] + '–' + c.evsBand[1] + 'x', lo: evps(c.evsBand[0], rev26), hi: evps(c.evsBand[1], rev26), c: C.bar },
     { label: '52-week range', lo: c.wk52[0], hi: c.wk52[1], c: C.barE },
@@ -1023,7 +1209,7 @@ function ValuationPage(P: any) {
           </div>
         </div>
         <div style={{ ...card, padding: '16px 18px' }}>
-          <div style={{ ...cardTitle, marginBottom: 10 }}>Trading multiples → implied share price (on FY26E)</div>
+          <div style={{ ...cardTitle, marginBottom: 10 }}>{'Trading multiples → implied share price (on ' + fy1 + 'E)'}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr 1fr', fontSize: 12 }}>
             {['Method', 'Current', 'Hist. avg', 'Peer med.', 'Impl. price*'].map((h, i) => (
               <div key={h} style={{ color: 'var(--mut)', fontSize: 10.5, padding: '4px 0', borderBottom: '1px solid var(--bor)', textAlign: i ? 'right' : 'left' }}>{h}</div>
@@ -1045,12 +1231,12 @@ function ValuationPage(P: any) {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 10 }}>
         <div style={{ ...card, padding: '16px 18px' }}>
-          <div style={{ ...cardTitle, marginBottom: 10 }}>Football field · NOK per share</div>
-          {rangeChart(field, PRICE, C, tt)}
+          <div style={{ ...cardTitle, marginBottom: 10 }}>{'Football field · ' + ccy + ' per share'}</div>
+          {rangeChart(field, PRICE, C, tt, undefined, ccy)}
         </div>
         <div style={{ ...card, padding: '16px 18px' }}>
-          <div style={{ ...cardTitle, marginBottom: 10 }}>EPS bridge FY25A → FY30E · base case, NOK</div>
-          {waterfallChart(bridge, C, tt)}
+          <div style={{ ...cardTitle, marginBottom: 10 }}>{'EPS bridge FY' + String(c.fy0 % 100) + 'A → FY' + String((c.fy0 + 5) % 100) + 'E · base case, ' + ccy}</div>
+          {waterfallChart(bridge, C, tt, ccy)}
           <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 8 }}>
             Decomposes base-case EPS growth into revenue and margin contribution.
           </div>
@@ -1075,6 +1261,11 @@ function PeersPage(P: any) {
   return (
     <>
       <h1 style={{ fontSize: 19, fontWeight: 600, margin: '0 0 14px' }}>Peer analysis</h1>
+      {c.live && (
+        <div style={{ background: 'var(--estBg)', border: '1px solid var(--bor)', borderRadius: 5, padding: '10px 14px', fontSize: 11.5, color: 'var(--est)', marginBottom: 10 }}>
+          {c.ticker} was loaded from the live API; the comparison universe below is the built-in mock peer set (NOK), shown for reference. Multiples and margins are unit-free and remain broadly comparable.
+        </div>
+      )}
       <div style={{ ...card, overflowX: 'auto', marginBottom: 10 }}>
         <div style={{ minWidth: 960, display: 'grid', gridTemplateColumns: '1.6fr repeat(9,1fr)' }}>
           {peerHead.map(([l, al]) => (

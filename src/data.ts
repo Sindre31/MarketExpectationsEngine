@@ -69,6 +69,14 @@ export interface Company {
   variantBody: string;
   kpis: Kpi[];
   valFootTail: string;
+  /** Reporting currency, e.g. 'NOK', 'USD' */
+  ccy: string;
+  /** Latest actual fiscal year (the "FY0" of the 8-year arrays), e.g. 2025 */
+  fy0: number;
+  /** True when the profile was fetched from the live-data API */
+  live?: boolean;
+  /** Display string for when the data was last refreshed */
+  updated: string;
 }
 
 export const CO: Record<string, Company> = {
@@ -139,6 +147,9 @@ export const CO: Record<string, Company> = {
       { l: 'Auto channel inventory (weeks)', latest: '9.4', est: '8.0', vals: [6.8, 7.0, 7.4, 7.9, 8.3, 8.8, 9.1, 9.4], good: 0, st: 'AT RISK' },
     ],
     valFootTail: 'trading at a premium to its own history on every multiple.',
+    ccy: 'NOK',
+    fy0: 2025,
+    updated: '26 Aug 2026 · 16:25 CET',
   },
   VSTM: {
     ticker: 'VSTM', name: 'Vestbo Micro ASA', meta: 'Oslo Børs · Industrial & Medtech Sensors',
@@ -207,6 +218,9 @@ export const CO: Record<string, Company> = {
       { l: 'Gross margin', latest: '58.9%', est: '58.6%', vals: [57.9, 58.0, 58.2, 58.3, 58.5, 58.6, 58.7, 58.9], good: 1, st: 'ON TRACK' },
     ],
     valFootTail: 'priced closer to medtech than to its industrial peer set.',
+    ccy: 'NOK',
+    fy0: 2025,
+    updated: '26 Aug 2026 · 16:25 CET',
   },
 };
 

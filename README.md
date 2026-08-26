@@ -6,9 +6,24 @@ revenue growth and terminal margins the market is implicitly paying for — and
 lets you judge whether those expectations are conservative, reasonable, or
 aggressive.
 
-Built with React + TypeScript + Vite. Ships with a mock NOK dataset (two Oslo
-Børs companies, `NDLS` and `VSTM`) and a model layer designed to be swapped for
-a real market-data API later.
+Built with React + TypeScript + Vite. Works out of the box with a mock NOK
+dataset (two Oslo Børs companies, `NDLS` and `VSTM`) — and loads **any real
+listed company live** through the Alpha Vantage API.
+
+## Live data
+
+Click **API** in the header and paste a free key from
+[alphavantage.co](https://www.alphavantage.co/support/#api-key) (stored only in
+your browser's `localStorage`). Then search any ticker — e.g. `IBM`, `AAPL`,
+`MSFT` — and pick **LOAD LIVE**. One company load uses 6 API requests
+(overview, quote, income statement, balance sheet, cash flow, monthly prices);
+the free tier allows 25 requests/day.
+
+The adapter (`src/live.ts`) maps real filings into the model: the last four
+fiscal years are reported actuals, the four estimate years are trend
+extrapolations (labelled as such in the UI — Alpha Vantage does not provide
+analyst consensus), and everything downstream — reverse DCF, scenarios,
+sensitivity, valuation — runs unchanged in the company's reporting currency.
 
 ## Screens
 
@@ -38,7 +53,9 @@ npm run preview   # serve the production build
 
 ```
 src/
-  data.ts      mock company dataset + peer comps (the API boundary)
+  data.ts      mock company dataset + peer comps (the data contract)
+  live.ts      Alpha Vantage adapter — fetches a real company and maps it
+               into the same Company shape the mocks use
   engine.ts    the DCF engine and the bisection solver used for
                "what growth does the price imply?"
   charts.tsx   dependency-free SVG charts: line, combo bar+line, range/

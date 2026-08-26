@@ -182,7 +182,7 @@ export interface RangeItem {
   c?: string;
 }
 
-export function rangeChart(items: RangeItem[], marker: number, C: Palette, tt: TipFn, height?: number) {
+export function rangeChart(items: RangeItem[], marker: number, C: Palette, tt: TipFn, height?: number, ccy = 'NOK') {
   const w = 560;
   const pl = 128;
   const pr = 44;
@@ -204,7 +204,7 @@ export function rangeChart(items: RangeItem[], marker: number, C: Palette, tt: T
         key={'r' + i}
         x={X(it.lo)} y={y + 3} width={Math.max(2, X(it.hi) - X(it.lo))} height={12} rx={2}
         fill={it.c || C.bar} opacity={0.85} style={{ cursor: 'crosshair' }}
-        {...tt(it.label, [{ t: 'NOK ' + it.lo.toFixed(0) + ' – ' + it.hi.toFixed(0) + (it.mid != null ? ' · mid ' + it.mid.toFixed(0) : '') }])}
+        {...tt(it.label, [{ t: ccy + ' ' + it.lo.toFixed(0) + ' – ' + it.hi.toFixed(0) + (it.mid != null ? ' · mid ' + it.mid.toFixed(0) : '') }])}
       />,
     );
     k.push(<text key={'lo' + i} x={X(it.lo) - 4} y={y + 12} fontSize={9} fill={C.txt} textAnchor="end" fontFamily={MONO}>{it.lo.toFixed(0)}</text>);
@@ -233,10 +233,11 @@ export interface ScatterCfg {
   fx?: (v: number) => string | number;
   fy?: (v: number) => string | number;
   C: Palette;
+  ccy?: string;
 }
 
 export function scatterChart(cfg: ScatterCfg, tt: TipFn) {
-  const { pts, xl, yl, fx = v => v, fy = v => v, C } = cfg;
+  const { pts, xl, yl, fx = v => v, fy = v => v, C, ccy = 'NOK' } = cfg;
   const w = 480;
   const h = 250;
   const pl = 46;
@@ -274,7 +275,7 @@ export function scatterChart(cfg: ScatterCfg, tt: TipFn) {
         fill={p.hl ? C.s1 : C.bar} opacity={p.hl ? 0.95 : 0.75}
         stroke={p.hl ? C.ink : 'none'} strokeWidth={1}
         style={{ cursor: 'crosshair' }}
-        {...tt(p.t, [{ t: xl + ': ' + fx(p.x) }, { t: yl + ': ' + fy(p.y) }, { t: 'Mkt cap: NOK ' + p.m.toFixed(0) + 'bn' }])}
+        {...tt(p.t, [{ t: xl + ': ' + fx(p.x) }, { t: yl + ': ' + fy(p.y) }, { t: 'Mkt cap: ' + ccy + ' ' + p.m.toFixed(0) + 'bn' }])}
       />,
     );
     k.push(<text key={'ct' + i} x={X(p.x) + r + 3} y={Y(p.y) + 3} fontSize={9} fill={p.hl ? C.ink : C.txt} fontFamily={MONO} fontWeight={p.hl ? 600 : 400}>{p.t}</text>);
@@ -288,7 +289,7 @@ export interface WaterfallItem {
   isTotal?: boolean;
 }
 
-export function waterfallChart(items: WaterfallItem[], C: Palette, tt: TipFn) {
+export function waterfallChart(items: WaterfallItem[], C: Palette, tt: TipFn, ccy = 'NOK') {
   const w = 460;
   const h = 215;
   const pl = 38;
@@ -326,7 +327,7 @@ export function waterfallChart(items: WaterfallItem[], C: Palette, tt: TipFn) {
         key={'b' + i}
         x={X(i) - bw / 2} y={Y(b.hi)} width={bw} height={Math.max(1.5, Y(b.lo) - Y(b.hi))}
         fill={fill} opacity={it.isTotal ? 0.9 : 0.8} style={{ cursor: 'crosshair' }}
-        {...tt(it.l, [{ t: (it.isTotal ? '' : it.v >= 0 ? '+' : '') + it.v.toFixed(2) + ' NOK' }])}
+        {...tt(it.l, [{ t: (it.isTotal ? '' : it.v >= 0 ? '+' : '') + it.v.toFixed(2) + ' ' + ccy }])}
       />,
     );
     k.push(<text key={'v' + i} x={X(i)} y={Y(b.hi) - 4} fontSize={9} fill={C.ink} textAnchor="middle" fontFamily={MONO}>{(it.isTotal ? '' : it.v >= 0 ? '+' : '') + it.v.toFixed(2)}</text>);
