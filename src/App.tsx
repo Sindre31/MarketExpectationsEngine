@@ -135,9 +135,9 @@ export default function App() {
     }
   }, [theme]);
 
-  // debounced live symbol search
+  // debounced live symbol search (personal key, or the site's shared-key proxy)
   useEffect(() => {
-    if (!apiKey || searchQ.trim().length < 2) {
+    if (searchQ.trim().length < 2) {
       setHits([]);
       return;
     }
@@ -308,34 +308,30 @@ export default function App() {
         action: sel ? null : () => pickCompany(co.ticker),
       });
     });
-  if (apiKey) {
-    hits
-      .filter(h => !companies[h.symbol.toUpperCase()])
-      .slice(0, 5)
-      .forEach(h => {
-        searchRows.push({
-          t: h.symbol,
-          n: h.name + ' · ' + h.currency,
-          tag: loadingSym === h.symbol.toUpperCase() ? 'LOADING…' : 'LOAD LIVE',
-          tagCol: 'var(--est)',
-          action: () => loadLive(h.symbol),
-        });
-      });
-    const typed = searchQ.trim().toUpperCase();
-    if (typed.length >= 1 && !companies[typed] && !hits.some(h => h.symbol.toUpperCase() === typed)) {
+  hits
+    .filter(h => !companies[h.symbol.toUpperCase()])
+    .slice(0, 5)
+    .forEach(h => {
       searchRows.push({
-        t: typed,
-        n: 'Load this exact symbol from the API',
-        tag: loadingSym === typed ? 'LOADING…' : 'FETCH',
-        tagCol: 'var(--mut)',
-        action: () => loadLive(typed),
+        t: h.symbol,
+        n: h.name + ' · ' + h.currency,
+        tag: loadingSym === h.symbol.toUpperCase() ? 'LOADING…' : 'LOAD LIVE',
+        tagCol: 'var(--est)',
+        action: () => loadLive(h.symbol),
       });
-    }
-  } else {
-    PEERS.filter(p => !CO[p[0]] && (!q || p[0].toLowerCase().includes(q) || p[1].toLowerCase().includes(q)))
-      .slice(0, 3)
-      .forEach(p => searchRows.push({ t: p[0], n: p[1], tag: 'CONNECT API', tagCol: 'var(--mut)', action: () => setKeyOpen(true) }));
-    searchRows.push({ t: '', n: 'Add an Alpha Vantage API key to load any real ticker', tag: 'SET KEY', tagCol: 'var(--acc)', action: () => setKeyOpen(true) });
+    });
+  const typed = searchQ.trim().toUpperCase();
+  if (typed.length >= 1 && !companies[typed] && !hits.some(h => h.symbol.toUpperCase() === typed)) {
+    searchRows.push({
+      t: typed,
+      n: 'Load this exact symbol from the API',
+      tag: loadingSym === typed ? 'LOADING…' : 'FETCH',
+      tagCol: 'var(--mut)',
+      action: () => loadLive(typed),
+    });
+  }
+  if (!apiKey && !searchQ.trim()) {
+    searchRows.push({ t: '', n: 'Type any real ticker to load it live — shared key, or set your own', tag: 'API', tagCol: 'var(--acc)', action: () => setKeyOpen(true) });
   }
 
   const YRS = yrLabels(c.fy0);
@@ -463,9 +459,9 @@ export default function App() {
               <div style={{ position: 'absolute', top: 34, right: 0, width: 290, background: 'var(--sur)', border: '1px solid var(--bor2)', borderRadius: 5, boxShadow: '0 8px 24px rgba(0,0,0,.14)', zIndex: 50, padding: '12px 14px' }}>
                 <div style={{ ...cardTitle, marginBottom: 6 }}>Live data · Alpha Vantage</div>
                 <div style={{ fontSize: 11, color: 'var(--mut)', marginBottom: 8 }}>
-                  Paste a free API key from{' '}
+                  Live loads use this site’s shared key by default. Paste your own free key from{' '}
                   <a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noreferrer">alphavantage.co</a>{' '}
-                  to search and load any real ticker. The key is stored only in this browser.
+                  for a personal quota. The key is stored only in this browser.
                 </div>
                 <input
                   type="text"

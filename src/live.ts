@@ -22,11 +22,23 @@ function num(x: unknown, fallback = NaN): number {
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const r1 = (v: number) => Math.round(v * 10) / 10;
 
+/**
+ * With a personal key, call Alpha Vantage directly from the browser.
+ * Without one, go through the site's /api/av serverless proxy, which holds a
+ * shared key server-side (and answers 503 if none is configured there).
+ */
 async function av(params: Record<string, string>, apiKey: string): Promise<any> {
-  const qs = new URLSearchParams({ ...params, apikey: apiKey });
-  const res = await fetch(`${BASE}?${qs}`);
-  if (!res.ok) throw new LiveDataError(`Alpha Vantage HTTP ${res.status}`);
-  const json = await res.json();
+  const qs = new URLSearchParams(params);
+  const url = apiKey ? `${BASE}?${qs}&apikey=${encodeURIComponent(apiKey)}` : `/api/av?${qs}`;
+  const res = await fetch(url);
+  let json: any;
+  try {
+    json = await res.json();
+  } catch {
+    throw new LiveDataError(`Market-data request failed (HTTP ${res.status})`);
+  }
+  if (json['error']) throw new LiveDataError(json['error']); // proxy error
+  if (!res.ok) throw new LiveDataError(`Market-data request failed (HTTP ${res.status})`);
   if (json['Error Message']) throw new LiveDataError(json['Error Message']);
   if (json['Information']) throw new LiveDataError(json['Information']); // rate limit / premium notice
   if (json['Note']) throw new LiveDataError(json['Note']);
@@ -66,15 +78,17 @@ function last4(reports: any[]): any[] {
   return out;
 }
 
+const pause = (ms: number) => new Promise(r => setTimeout(r, ms));
+
 export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<Company> {
-  const [ov, quoteRes, incRes, balRes, cfRes, tsRes] = await Promise.all([
-    av({ function: 'OVERVIEW', symbol }, apiKey),
-    av({ function: 'GLOBAL_QUOTE', symbol }, apiKey),
-    av({ function: 'INCOME_STATEMENT', symbol }, apiKey),
-    av({ function: 'BALANCE_SHEET', symbol }, apiKey),
-    av({ function: 'CASH_FLOW', symbol }, apiKey),
-    av({ function: 'TIME_SERIES_MONTHLY_ADJUSTED', symbol }, apiKey),
-  ]);
+  // sequential with spacing: Alpha Vantage rejects bursts above ~2 req/s
+  const results: any[] = [];
+  const fns = ['OVERVIEW', 'GLOBAL_QUOTE', 'INCOME_STATEMENT', 'BALANCE_SHEET', 'CASH_FLOW', 'TIME_SERIES_MONTHLY_ADJUSTED'];
+  for (let i = 0; i < fns.length; i++) {
+    if (i) await pause(550);
+    results.push(await av({ function: fns[i], symbol }, apiKey));
+  }
+  const [ov, quoteRes, incRes, balRes, cfRes, tsRes] = results;
   if (!ov.Symbol) throw new LiveDataError(`No fundamentals found for "${symbol}"`);
 
   const q = quoteRes['Global Quote'] || {};

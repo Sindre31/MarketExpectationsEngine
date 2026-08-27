@@ -12,12 +12,23 @@ listed company live** through the Alpha Vantage API.
 
 ## Live data
 
-Click **API** in the header and paste a free key from
-[alphavantage.co](https://www.alphavantage.co/support/#api-key) (stored only in
-your browser's `localStorage`). Then search any ticker — e.g. `IBM`, `AAPL`,
-`MSFT` — and pick **LOAD LIVE**. One company load uses 6 API requests
-(overview, quote, income statement, balance sheet, cash flow, monthly prices);
-the free tier allows 25 requests/day.
+Search any ticker — e.g. `IBM`, `AAPL`, `MSFT` — and pick **LOAD LIVE**. Live
+requests go through two paths:
+
+1. **Shared key (default)** — the serverless function `api/av.ts` proxies
+   Alpha Vantage with a key stored server-side. On Vercel, set the environment
+   variable **`ALPHAVANTAGE_API_KEY`** (Project → Settings → Environment
+   Variables) and redeploy. The function only allows the seven read-only
+   endpoints the app uses and caches responses at the edge (filings 6–24h,
+   quotes 5 min) to stretch the key's quota.
+2. **Personal key** — click **API** in the header and paste your own free key
+   from [alphavantage.co](https://www.alphavantage.co/support/#api-key); it is
+   stored only in your browser's `localStorage` and used directly, bypassing
+   the shared proxy.
+
+One company load uses 6 API requests (overview, quote, income statement,
+balance sheet, cash flow, monthly prices), fetched sequentially to respect the
+API's burst limit; the free tier allows 25 requests/day per key.
 
 The adapter (`src/live.ts`) maps real filings into the model: the last four
 fiscal years are reported actuals, the four estimate years are trend
@@ -62,6 +73,9 @@ src/
                football field, scatter, waterfall, sparkline
   App.tsx      the terminal UI — nav, header, and the seven screens
   styles.css   theme tokens (light/dark), global styles, print rules
+api/
+  av.ts        Vercel serverless function — shared-key Alpha Vantage proxy
+               (reads ALPHAVANTAGE_API_KEY, whitelists endpoints, edge-caches)
 design/
   Market Expectations Engine.dc.html   the original Claude Design source
   support.js                           its runtime (open the .dc.html in a
