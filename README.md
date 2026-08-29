@@ -49,7 +49,12 @@ sensitivity, valuation — runs unchanged in the company's reporting currency.
 | 07 | **Investment Case** | Thesis, catalysts, risks, variant perception (fed by the live reverse-DCF outputs), and a quarterly KPI monitoring dashboard with sparklines |
 
 Also: light/dark theme toggle (persisted), company search/switcher, crosshair
-tooltips on every chart, and a print-friendly Export (save as PDF) mode.
+tooltips on every chart (hover devices only), and a print-friendly Export (save
+as PDF) mode.
+
+The layout is responsive: below 860px the sidebar becomes a sticky tab strip,
+the card grids fold to one column, and the dense tables (financial model, peer
+comps, sensitivity, KPI monitor) pan sideways with their label column pinned.
 
 ## Getting started
 

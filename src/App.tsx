@@ -27,6 +27,37 @@ interface TipState {
 const MONO = "'IBM Plex Mono',monospace";
 const SANS = "'IBM Plex Sans',sans-serif";
 
+/** Below this width the desktop terminal layout has to fold: phones, and
+ *  small tablets in portrait. */
+const NARROW_Q = '(max-width: 860px)';
+
+/** Reactive media-query match. */
+function useMedia(query: string): boolean {
+  const [match, setMatch] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const on = () => setMatch(mq.matches);
+    on();
+    if (mq.addEventListener) {
+      mq.addEventListener('change', on);
+      return () => mq.removeEventListener('change', on);
+    }
+    mq.addListener(on); // Safari < 14
+    return () => mq.removeListener(on);
+  }, [query]);
+  return match;
+}
+
+/** Grid template that folds to one column (or `mob`) on narrow screens.
+ *  The folded tracks are `minmax(0, …)`: a bare `1fr` track grows to its
+ *  content's minimum width, so one wide table would push the page sideways. */
+const cols = (narrow: boolean, wide: string, mob = 'minmax(0,1fr)') => (narrow ? mob : wide);
+
+/** Wrapper for a table too dense to fold: on narrow screens it keeps its
+ *  natural width and the reader pans it sideways. Pair with a `minWidth` on
+ *  the grid inside. */
+const panX: React.CSSProperties = { overflowX: 'auto' };
+
 const card: React.CSSProperties = {
   background: 'var(--sur)',
   border: '1px solid var(--bor)',
@@ -125,6 +156,8 @@ export default function App() {
   const [loadingSym, setLoadingSym] = useState<string | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [hits, setHits] = useState<SearchHit[]>([]);
+  const narrow = useMedia(NARROW_Q);
+  const canHover = useMedia('(hover: hover)');
 
   useEffect(() => {
     document.body.dataset.theme = theme;
@@ -155,7 +188,9 @@ export default function App() {
   const C: Palette = theme === 'dark' ? DARK : LIGHT;
 
   const tt: TipFn = (title, lines) => ({
-    onMouseMove: e => setTip({ x: e.clientX, y: e.clientY, title, lines }),
+    onMouseMove: e => {
+      if (canHover) setTip({ x: e.clientX, y: e.clientY, title, lines });
+    },
     onMouseLeave: () => setTip(null),
   });
 
@@ -339,44 +374,62 @@ export default function App() {
   return (
     <div
       data-app-root="1"
-      style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--ink)', fontFamily: SANS, fontSize: 13, lineHeight: 1.45 }}
+      style={{
+        display: 'flex', flexDirection: narrow ? 'column' : 'row',
+        height: narrow ? 'auto' : '100vh', overflow: narrow ? 'visible' : 'hidden',
+        background: 'var(--bg)', color: 'var(--ink)', fontFamily: SANS, fontSize: 13, lineHeight: 1.45,
+      }}
     >
-      <nav data-print-hide="1" style={{ width: 204, flexShrink: 0, background: 'var(--sur)', borderRight: '1px solid var(--bor)', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '18px 18px 14px', borderBottom: '1px solid var(--bor)' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.02em' }}>
-            Market Expectations<br />Engine
+      <nav
+        data-print-hide="1"
+        className={narrow ? 'mx-hscroll' : undefined}
+        style={
+          narrow
+            ? { position: 'sticky', top: 0, zIndex: 40, flexShrink: 0, background: 'var(--sur)', borderBottom: '1px solid var(--bor)', display: 'flex', overflowX: 'auto' }
+            : { width: 204, flexShrink: 0, background: 'var(--sur)', borderRight: '1px solid var(--bor)', display: 'flex', flexDirection: 'column' }
+        }
+      >
+        {!narrow && (
+          <div style={{ padding: '18px 18px 14px', borderBottom: '1px solid var(--bor)' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.02em' }}>
+              Market Expectations<br />Engine
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--mut)', fontFamily: MONO, marginTop: 4 }}>REVERSE-DCF TERMINAL</div>
           </div>
-          <div style={{ fontSize: 10, color: 'var(--mut)', fontFamily: MONO, marginTop: 4 }}>REVERSE-DCF TERMINAL</div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: 10 }}>
+        )}
+        <div style={narrow ? { display: 'flex', gap: 2, padding: '6px 8px' } : { display: 'flex', flexDirection: 'column', gap: 1, padding: 10 }}>
           {NAV.map(([id, label], i) => (
             <div
               key={id}
               className={page === id ? undefined : 'hov-sur2'}
               onClick={go(id)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 4, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 10, borderRadius: 4, cursor: 'pointer',
+                padding: narrow ? '8px 11px' : '8px 10px',
+                whiteSpace: narrow ? 'nowrap' : undefined,
                 background: page === id ? 'var(--accS)' : 'transparent',
                 color: page === id ? 'var(--acc)' : 'var(--ink)',
                 fontWeight: page === id ? 600 : 400,
               }}
             >
-              <span style={{ fontFamily: MONO, fontSize: 9.5, color: 'var(--mut)' }}>{'0' + (i + 1)}</span>
-              <span style={{ fontSize: 12.5 }}>{label}</span>
+              {!narrow && <span style={{ fontFamily: MONO, fontSize: 9.5, color: 'var(--mut)' }}>{'0' + (i + 1)}</span>}
+              <span style={{ fontSize: 12.5 }}>{narrow && id === 'case' ? 'Case' : label}</span>
             </div>
           ))}
         </div>
-        <div style={{ marginTop: 'auto', padding: '14px 18px', borderTop: '1px solid var(--bor)', fontSize: 10, color: 'var(--mut)' }}>
-          {c.live ? 'Live data · Alpha Vantage' : 'Mock dataset'} · {c.ccy}
-          <br />Model v1.2 — live API
-        </div>
+        {!narrow && (
+          <div style={{ marginTop: 'auto', padding: '14px 18px', borderTop: '1px solid var(--bor)', fontSize: 10, color: 'var(--mut)' }}>
+            {c.live ? 'Live data · Alpha Vantage' : 'Mock dataset'} · {c.ccy}
+            <br />Model v1.2 — live API
+          </div>
+        )}
       </nav>
-      <div data-app-col="1" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <header style={{ minHeight: 58, flexShrink: 0, background: 'var(--sur)', borderBottom: '1px solid var(--bor)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 16px', padding: '8px 22px', minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, whiteSpace: 'nowrap' }}>
+      <div data-app-col="1" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
+        <header style={{ minHeight: narrow ? 0 : 58, flexShrink: 0, background: 'var(--sur)', borderBottom: '1px solid var(--bor)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: narrow ? '5px 12px' : '8px 16px', padding: narrow ? '8px 12px' : '8px 22px', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0, maxWidth: narrow ? '100%' : undefined, whiteSpace: 'nowrap' }}>
             <span style={{ fontFamily: MONO, fontWeight: 600, fontSize: 15 }}>{c.ticker}</span>
-            <span style={{ fontWeight: 500 }}>{c.name}</span>
-            <span style={{ fontSize: 11, color: 'var(--mut)' }}>{c.meta}</span>
+            <span style={{ fontWeight: 500, overflow: narrow ? 'hidden' : undefined, textOverflow: narrow ? 'ellipsis' : undefined }}>{c.name}</span>
+            {!narrow && <span style={{ fontSize: 11, color: 'var(--mut)' }}>{c.meta}</span>}
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontFamily: MONO, whiteSpace: 'nowrap' }}>
             <span style={{ fontSize: 16, fontWeight: 600 }}>{PRICE.toFixed(2)}</span>
@@ -388,7 +441,7 @@ export default function App() {
           <div style={{ fontSize: 10.5, color: 'var(--mut)', whiteSpace: 'nowrap' }}>
             {loadingSym ? 'Loading ' + loadingSym + '…' : 'Updated ' + c.updated + (c.live ? ' · live' : ' · mock')}
           </div>
-          <div data-print-hide="1" style={{ marginLeft: 'auto', position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div data-print-hide="1" style={{ marginLeft: narrow ? 0 : 'auto', flex: narrow ? '1 1 100%' : undefined, position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
               type="text"
               placeholder="Search companies…"
@@ -399,10 +452,10 @@ export default function App() {
               }}
               onFocus={() => setSearchOpen(true)}
               onBlur={() => setTimeout(() => setSearchOpen(false), 180)}
-              style={{ background: 'var(--bg)', border: '1px solid var(--bor2)', borderRadius: 4, color: 'var(--ink)', fontSize: 12, padding: '6px 10px', width: 150, maxWidth: '26vw', fontFamily: SANS }}
+              style={{ background: 'var(--bg)', border: '1px solid var(--bor2)', borderRadius: 4, color: 'var(--ink)', fontSize: 12, padding: '6px 10px', width: narrow ? '100%' : 150, maxWidth: narrow ? undefined : '26vw', minWidth: 0, fontFamily: SANS }}
             />
             {searchOpen && (
-              <div style={{ position: 'absolute', top: 34, right: 0, width: 300, background: 'var(--sur)', border: '1px solid var(--bor2)', borderRadius: 5, boxShadow: '0 8px 24px rgba(0,0,0,.14)', zIndex: 50, overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 34, right: 0, width: 300, maxWidth: 'calc(100vw - 24px)', background: 'var(--sur)', border: '1px solid var(--bor2)', borderRadius: 5, boxShadow: '0 8px 24px rgba(0,0,0,.14)', zIndex: 50, overflow: 'hidden' }}>
                 {loadErr && (
                   <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--bor)', fontSize: 11, color: 'var(--neg)', background: 'var(--negBg)' }}>{loadErr}</div>
                 )}
@@ -443,7 +496,7 @@ export default function App() {
           >
             {theme === 'light' ? 'Dark' : 'Light'}
           </button>
-          <div data-print-hide="1" style={{ position: 'relative' }}>
+          <div data-print-hide="1" style={{ position: 'relative', marginLeft: narrow ? 'auto' : undefined }}>
             <button
               className="hov-ink"
               onClick={() => {
@@ -456,7 +509,7 @@ export default function App() {
               {apiKey ? 'API ●' : 'API ○'}
             </button>
             {keyOpen && (
-              <div style={{ position: 'absolute', top: 34, right: 0, width: 290, background: 'var(--sur)', border: '1px solid var(--bor2)', borderRadius: 5, boxShadow: '0 8px 24px rgba(0,0,0,.14)', zIndex: 50, padding: '12px 14px' }}>
+              <div style={{ position: 'absolute', top: 34, right: 0, width: 318, boxSizing: 'border-box', maxWidth: 'calc(100vw - 24px)', background: 'var(--sur)', border: '1px solid var(--bor2)', borderRadius: 5, boxShadow: '0 8px 24px rgba(0,0,0,.14)', zIndex: 50, padding: '12px 14px' }}>
                 <div style={{ ...cardTitle, marginBottom: 6 }}>Live data · Alpha Vantage</div>
                 <div style={{ fontSize: 11, color: 'var(--mut)', marginBottom: 8 }}>
                   Live loads use this site’s shared key by default. Paste your own free key from{' '}
@@ -502,25 +555,25 @@ export default function App() {
             )}
           </div>
         </header>
-        <main data-main="1" style={{ flex: 1, overflowY: 'auto', padding: '24px 26px 48px' }}>
+        <main data-main="1" style={{ flex: 1, minHeight: 0, overflowY: narrow ? 'visible' : 'auto', padding: narrow ? '14px 12px 40px' : '24px 26px 48px' }}>
           <div style={{ maxWidth: 1280, margin: '0 auto' }}>
             {page === 'overview' && (
-              <OverviewPage {...{ c, C, tt, go, period, setPeriod, rev, em, gm, ebm, eps, eps25, eps26, ebitda, ebitda26, rev26, fcf25, growth, evM, netDebt, pe, evE, evS, fcfY, peg, med, mcapM, YRS }} />
+              <OverviewPage {...{ narrow, c, C, tt, go, period, setPeriod, rev, em, gm, ebm, eps, eps25, eps26, ebitda, ebitda26, rev26, fcf25, growth, evM, netDebt, pe, evE, evS, fcfY, peg, med, mcapM, YRS }} />
             )}
             {page === 'expectations' && (
-              <ExpectationsPage {...{ c, C, tt, a, d, setA, implG, implEm, implFcfM, implRoic, gap, assess, pct, PRICE, myPresets, presets, setPresets, setAOver, rev, fcf25, gapColor: gap > 5 ? 'var(--neg)' : gap < -5 ? 'var(--pos)' : 'var(--est)', barLoV, barHiV }} />
+              <ExpectationsPage {...{ narrow, c, C, tt, a, d, setA, implG, implEm, implFcfM, implRoic, gap, assess, pct, PRICE, myPresets, presets, setPresets, setAOver, rev, fcf25, gapColor: gap > 5 ? 'var(--neg)' : gap < -5 ? 'var(--pos)' : 'var(--est)', barLoV, barHiV }} />
             )}
             {page === 'financials' && (
-              <FinancialsPage {...{ c, tab, setTab, expanded, setExpanded, rev, gm, em, ebm, ebitda, ebit, ni, eps, capex, ocf, fcf, growth, est, YRS }} />
+              <FinancialsPage {...{ narrow, c, tab, setTab, expanded, setExpanded, rev, gm, em, ebm, ebitda, ebit, ni, eps, capex, ocf, fcf, growth, est, YRS }} />
             )}
             {page === 'scenarios' && (
-              <ScenariosPage {...{ c, C, tt, scNow, scR, scDefs, setSc, setAOver, setPage, PRICE }} />
+              <ScenariosPage {...{ narrow, c, C, tt, scNow, scR, scDefs, setSc, setAOver, setPage, PRICE }} />
             )}
             {page === 'valuation' && (
-              <ValuationPage {...{ c, C, tt, d, go, netDebt, PRICE, SH, eps25, eps26, ebitda26, rev26, pe, evE, evS, med, evps, scR, scNow }} />
+              <ValuationPage {...{ narrow, c, C, tt, d, go, netDebt, PRICE, SH, eps25, eps26, ebitda26, rev26, pe, evE, evS, med, evps, scR, scNow }} />
             )}
-            {page === 'peers' && <PeersPage {...{ c, C, tt }} />}
-            {page === 'case' && <CasePage {...{ c, C, variantText }} />}
+            {page === 'peers' && <PeersPage {...{ c, C, tt, narrow }} />}
+            {page === 'case' && <CasePage {...{ c, C, narrow, variantText }} />}
           </div>
         </main>
       </div>
@@ -539,7 +592,7 @@ export default function App() {
 // ---------------------------------------------------------------- overview
 
 function OverviewPage(P: any) {
-  const { c, C, tt, go, period, setPeriod, rev, em, gm, ebm, eps, eps25, eps26, ebitda, ebitda26, rev26, fcf25, growth, evM, netDebt, pe, evE, evS, fcfY, peg, med, mcapM, YRS } = P;
+  const { c, C, tt, go, narrow, period, setPeriod, rev, em, gm, ebm, eps, eps25, eps26, ebitda, ebitda26, rev26, fcf25, growth, evM, netDebt, pe, evE, evS, fcfY, peg, med, mcapM, YRS } = P;
   const ccy = c.ccy;
   const fx1 = (v: number) => v.toFixed(1) + 'x';
   const fp1 = (v: number) => v.toFixed(1) + '%';
@@ -591,13 +644,13 @@ function OverviewPage(P: any) {
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px 12px', marginBottom: 16 }}>
         <h1 style={{ fontSize: 19, fontWeight: 600, margin: 0 }}>Company overview</h1>
         <span style={{ fontSize: 11, color: 'var(--mut)' }}>
           {'FY' + c.fy0 + 'A reported · FY' + (c.fy0 + 1) + 'E ' + (c.live ? 'extrapolated' : 'consensus')}
         </span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10, marginBottom: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols(narrow, 'repeat(5,1fr)', 'repeat(2,minmax(0,1fr))'), gap: 10, marginBottom: 10 }}>
         {ovMetrics.map((m: any) => (
           <div key={m.l} title={m.tip} style={{ ...card, padding: '12px 14px' }}>
             <div style={{ ...cardTitle, marginBottom: 6 }}>{m.l}</div>
@@ -606,22 +659,24 @@ function OverviewPage(P: any) {
           </div>
         ))}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols(narrow, '1.2fr 1fr'), gap: 10, marginBottom: 10 }}>
         <div style={{ ...card, padding: '16px 18px' }}>
           <div style={{ ...cardTitle, marginBottom: 10 }}>Valuation vs history &amp; peers</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr 1fr', gap: 0, fontSize: 12 }}>
-            {['Metric', 'Current', '5Y avg', 'Peer med.', 'vs hist.'].map((h, i) => (
-              <div key={h} style={{ color: 'var(--mut)', fontSize: 10.5, padding: '4px 0', borderBottom: '1px solid var(--bor)', textAlign: i ? 'right' : 'left' }}>{h}</div>
-            ))}
-            {valRows.map(vr => (
-              <React.Fragment key={vr.m}>
-                <div style={{ padding: '6px 0', borderBottom: '1px solid var(--bor)' }}>{vr.m}</div>
-                <div style={{ padding: '6px 0', borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, fontWeight: 600 }}>{vr.cur}</div>
-                <div style={{ padding: '6px 0', borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, color: 'var(--mut)' }}>{vr.avg}</div>
-                <div style={{ padding: '6px 0', borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, color: 'var(--mut)' }}>{vr.peer}</div>
-                <div style={{ padding: '6px 0', borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, color: vr.premCol }}>{vr.prem}</div>
-              </React.Fragment>
-            ))}
+          <div style={narrow ? panX : undefined}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr 1fr', gap: 0, fontSize: 12, minWidth: narrow ? 400 : undefined }}>
+              {['Metric', 'Current', '5Y avg', 'Peer med.', 'vs hist.'].map((h, i) => (
+                <div key={h} style={{ color: 'var(--mut)', fontSize: 10.5, padding: '4px 0', borderBottom: '1px solid var(--bor)', textAlign: i ? 'right' : 'left' }}>{h}</div>
+              ))}
+              {valRows.map(vr => (
+                <React.Fragment key={vr.m}>
+                  <div style={{ padding: '6px 0', borderBottom: '1px solid var(--bor)' }}>{vr.m}</div>
+                  <div style={{ padding: '6px 0', borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, fontWeight: 600 }}>{vr.cur}</div>
+                  <div style={{ padding: '6px 0', borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, color: 'var(--mut)' }}>{vr.avg}</div>
+                  <div style={{ padding: '6px 0', borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, color: 'var(--mut)' }}>{vr.peer}</div>
+                  <div style={{ padding: '6px 0', borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, color: vr.premCol }}>{vr.prem}</div>
+                </React.Fragment>
+              ))}
+            </div>
           </div>
           <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 10 }}>
             {'Enterprise value ' + ccy + ' ' + fB(evM) + 'bn · ' + c.valFootTail}
@@ -647,7 +702,7 @@ function OverviewPage(P: any) {
           </div>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols(narrow, '1fr 1fr 1fr'), gap: 10, marginBottom: 10 }}>
         <div style={{ ...card, padding: '16px 18px' }}>
           <div style={{ ...cardTitle, marginBottom: 8 }}>Revenue &amp; EBITDA margin</div>
           {comboChart({ w: 400, h: 175, bars: rev.map((r: number) => r / 1000), estFrom: 4, line: em, labels: YRS.map((y: string) => y.slice(2)), fmt: v => v.toFixed(0), barName: 'Revenue', barFmt: v => ccy + ' ' + v.toFixed(1) + 'bn', lineName: 'EBITDA margin', C }, tt)}
@@ -668,7 +723,7 @@ function OverviewPage(P: any) {
           <div style={{ fontSize: 10, color: 'var(--mut)', marginTop: 6 }}>{c.live ? 'Shaded bars are extrapolated estimates' : 'Shaded bars are consensus estimates'}</div>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols(narrow, '1fr 1fr 1.2fr'), gap: 10 }}>
         <div style={{ ...card, padding: '16px 18px' }}>
           <div style={{ ...cardTitle, color: 'var(--pos)', marginBottom: 10 }}>Bull case</div>
           {c.bull.map((t: string) => (
@@ -702,7 +757,7 @@ function OverviewPage(P: any) {
 // ------------------------------------------------------------ expectations
 
 function ExpectationsPage(P: any) {
-  const { c, C, tt, a, d, setA, implG, implEm, implFcfM, implRoic, gap, assess, pct, PRICE, myPresets, presets, setPresets, setAOver, rev, fcf25, gapColor, barLoV, barHiV } = P;
+  const { c, C, tt, a, d, narrow, setA, implG, implEm, implFcfM, implRoic, gap, assess, pct, PRICE, myPresets, presets, setPresets, setAOver, rev, fcf25, gapColor, barLoV, barHiV } = P;
   const ccy = c.ccy;
   const assumpDefs: [string, keyof Assumptions, number, number, number, string, string][] = [
     ['Revenue CAGR (5Y)', 'g', 0, 25, 0.1, '%', 'Compound annual revenue growth FY26–30'],
@@ -742,7 +797,7 @@ function ExpectationsPage(P: any) {
           Reverse DCF — instead of estimating value, solve for the expectations embedded in {ccy} {PRICE.toFixed(2)}.
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 12, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols(narrow, '340px 1fr'), gap: 12, alignItems: 'start' }}>
         <div style={card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--bor)' }}>
             <div style={cardTitle}>Your assumptions</div>
@@ -807,7 +862,7 @@ function ExpectationsPage(P: any) {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
           <div style={{ ...card, padding: '18px 20px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: cols(narrow, '1fr 1fr 1fr'), gap: narrow ? 10 : 16, marginBottom: 14 }}>
               <div>
                 <div style={{ ...cardTitle, marginBottom: 4 }}>Market price</div>
                 <div style={{ fontFamily: MONO, fontSize: 26, fontWeight: 600 }}>{PRICE.toFixed(2)}</div>
@@ -843,7 +898,7 @@ function ExpectationsPage(P: any) {
               {'At the current share price of ' + ccy + ' ' + PRICE.toFixed(2) + ', the market appears to be pricing in approximately ' + implG.toFixed(1) + '% annual revenue growth over the next five years and an EBITDA margin expansion from ' + c.M0.toFixed(1) + '% to ' + implEm.toFixed(1) + '% — against ' + (c.live ? 'a historical-trend baseline' : 'analyst consensus') + ' of ' + c.consG.toFixed(1) + '% growth and a ' + c.defA.em.toFixed(0) + '% terminal margin.'}
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: cols(narrow, 'repeat(5,1fr)', 'repeat(2,minmax(0,1fr))'), gap: 10 }}>
             {impliedStats.map(st => (
               <div key={st.l} title={st.tip} style={{ ...card, padding: '11px 13px' }}>
                 <div style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--mut)', marginBottom: 5 }}>{st.l}</div>
@@ -861,7 +916,7 @@ function ExpectationsPage(P: any) {
                 <span style={{ color: 'var(--acc)' }}>— Market-implied</span>
               </div>
             </div>
-            {lineChart({ w: 720, h: 210, series: [
+            {lineChart({ w: narrow ? 430 : 720, h: narrow ? 200 : 210, series: [
               { v: histS, c: C.ink, wd: 2, dots: true, n: 'Historical' },
               { v: cons, c: C.s2, wd: 1.6, dash: '5 4', dots: true, n: 'Consensus' },
               { v: impl, c: C.s1, wd: 2, dots: true, n: 'Market-implied' },
@@ -876,7 +931,7 @@ function ExpectationsPage(P: any) {
 // -------------------------------------------------------------- financials
 
 function FinancialsPage(P: any) {
-  const { c, tab, setTab, expanded, setExpanded, rev, gm, em, ebm, ebitda, ebit, ni, eps, capex, ocf, fcf, growth, est, YRS } = P;
+  const { c, tab, setTab, narrow, expanded, setExpanded, rev, gm, em, ebm, ebitda, ebit, ni, eps, capex, ocf, fcf, growth, est, YRS } = P;
   const shade = true;
   const hasSegs = c.segs.length > 0;
 
@@ -941,6 +996,11 @@ function FinancialsPage(P: any) {
   ];
   const tabRows: Record<FinTab, FinRowDef[]> = { is: isRows, bs: bsRows, cf: cfRows, kpi: kpiRows };
 
+  const finCols = (narrow ? '148px' : '230px') + ' repeat(8,1fr)';
+  const labelCell: React.CSSProperties = narrow
+    ? { position: 'sticky', left: 0, zIndex: 1, background: 'var(--sur)', borderRight: '1px solid var(--bor)', overflow: 'hidden', textOverflow: 'ellipsis' }
+    : {};
+
   const cellStyle = (i: number, bold?: 1, negRed?: boolean, v?: number): React.CSSProperties => ({
     padding: '7px 12px', textAlign: 'right', fontFamily: MONO, fontSize: 11.5,
     fontWeight: bold ? 600 : 400,
@@ -952,10 +1012,10 @@ function FinancialsPage(P: any) {
   (tabRows[tab as FinTab] || isRows).forEach(r => {
     const expd = !!expanded[r.id];
     rowsOut.push(
-      <div key={r.id} className="hov-sur2" style={{ display: 'grid', gridTemplateColumns: '230px repeat(8,1fr)', borderBottom: '1px solid var(--bor)' }}>
+      <div key={r.id} className="hov-sur2" style={{ display: 'grid', gridTemplateColumns: finCols, borderBottom: '1px solid var(--bor)' }}>
         <div
           onClick={r.exp ? () => setExpanded((s: Record<string, boolean>) => ({ ...s, [r.id]: !s[r.id] })) : undefined}
-          style={{ padding: '7px 16px', paddingLeft: r.sub ? 28 : 16, fontSize: 12, fontWeight: r.bold ? 600 : 400, color: r.sub ? 'var(--mut)' : 'var(--ink)', cursor: r.exp ? 'pointer' : 'default', whiteSpace: 'nowrap' }}
+          style={{ padding: '7px 16px', paddingLeft: r.sub ? 28 : 16, fontSize: 12, fontWeight: r.bold ? 600 : 400, color: r.sub ? 'var(--mut)' : 'var(--ink)', cursor: r.exp ? 'pointer' : 'default', whiteSpace: 'nowrap', ...labelCell }}
         >
           {(r.exp ? (expd ? '▾ ' : '▸ ') : '') + r.label}
         </div>
@@ -967,8 +1027,8 @@ function FinancialsPage(P: any) {
     if (r.exp && expd) {
       c.segs.forEach(([sl, fn]: [string, (r: number, i: number) => number]) => {
         rowsOut.push(
-          <div key={r.id + '-' + sl} className="hov-sur2" style={{ display: 'grid', gridTemplateColumns: '230px repeat(8,1fr)', borderBottom: '1px solid var(--bor)' }}>
-            <div style={{ padding: '7px 16px', paddingLeft: 32, fontSize: 12, fontWeight: 400, color: 'var(--mut)', cursor: 'default', whiteSpace: 'nowrap' }}>{sl}</div>
+          <div key={r.id + '-' + sl} className="hov-sur2" style={{ display: 'grid', gridTemplateColumns: finCols, borderBottom: '1px solid var(--bor)' }}>
+            <div style={{ padding: '7px 16px', paddingLeft: 32, fontSize: 12, fontWeight: 400, color: 'var(--mut)', cursor: 'default', whiteSpace: 'nowrap', ...labelCell }}>{sl}</div>
             {rev.map((rr: number, i: number) => (
               <div key={i} style={cellStyle(i)}>{fM(fn(rr, i))}</div>
             ))}
@@ -980,14 +1040,17 @@ function FinancialsPage(P: any) {
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px 12px', marginBottom: 14 }}>
         <h1 style={{ fontSize: 19, fontWeight: 600, margin: 0 }}>Financial model</h1>
         <div style={{ display: 'flex', gap: 2, background: 'var(--sur)', border: '1px solid var(--bor)', borderRadius: 5, padding: 3 }}>
-          {([['is', 'Income Statement'], ['bs', 'Balance Sheet'], ['cf', 'Cash Flow'], ['kpi', 'KPIs']] as [FinTab, string][]).map(([id, l]) => (
+          {(narrow
+            ? ([['is', 'Income'], ['bs', 'Balance'], ['cf', 'Cash flow'], ['kpi', 'KPIs']] as [FinTab, string][])
+            : ([['is', 'Income Statement'], ['bs', 'Balance Sheet'], ['cf', 'Cash Flow'], ['kpi', 'KPIs']] as [FinTab, string][])
+          ).map(([id, l]) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              style={{ background: tab === id ? 'var(--accS)' : 'transparent', color: tab === id ? 'var(--acc)' : 'var(--mut)', border: 'none', borderRadius: 3, padding: '5px 13px', fontSize: 11.5, cursor: 'pointer', fontFamily: SANS, fontWeight: tab === id ? 600 : 400 }}
+              style={{ background: tab === id ? 'var(--accS)' : 'transparent', color: tab === id ? 'var(--acc)' : 'var(--mut)', border: 'none', borderRadius: 3, padding: narrow ? '6px 10px' : '5px 13px', fontSize: 11.5, cursor: 'pointer', fontFamily: SANS, fontWeight: tab === id ? 600 : 400, whiteSpace: 'nowrap' }}
             >
               {l}
             </button>
@@ -995,9 +1058,9 @@ function FinancialsPage(P: any) {
         </div>
       </div>
       <div style={{ ...card, overflowX: 'auto' }}>
-        <div style={{ minWidth: 980 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '230px repeat(8,1fr)', borderBottom: '1px solid var(--bor2)', background: 'var(--sur)' }}>
-            <div style={{ padding: '9px 16px', ...cardTitle }}>{c.ccy + ' m unless stated'}</div>
+        <div style={{ minWidth: narrow ? 720 : 980 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: finCols, borderBottom: '1px solid var(--bor2)', background: 'var(--sur)' }}>
+            <div style={{ padding: '9px 16px', ...cardTitle, ...labelCell }}>{c.ccy + ' m unless stated'}</div>
             {YRS.map((y: string, i: number) => (
               <div key={y} style={{ padding: '9px 12px', textAlign: 'right', fontFamily: MONO, fontSize: 11, fontWeight: 600, color: est(i) ? 'var(--est)' : 'var(--ink)', background: est(i) && shade ? 'var(--estBg)' : 'transparent' }}>{y}</div>
             ))}
@@ -1006,7 +1069,7 @@ function FinancialsPage(P: any) {
         </div>
       </div>
       <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 8 }}>
-        {'A = actual · E = estimate (shaded).' + (hasSegs ? ' Click Revenue to expand segment detail.' : c.live ? ' Estimates are trend extrapolations from reported filings.' : '')}
+        {'A = actual · E = estimate (shaded).' + (narrow ? ' Swipe the table sideways for later years.' : '') + (hasSegs ? ' Click Revenue to expand segment detail.' : c.live ? ' Estimates are trend extrapolations from reported filings.' : '')}
       </div>
     </>
   );
@@ -1015,7 +1078,7 @@ function FinancialsPage(P: any) {
 // --------------------------------------------------------------- scenarios
 
 function ScenariosPage(P: any) {
-  const { c, C, tt, scNow, scR, scDefs, setSc, setAOver, setPage, PRICE } = P;
+  const { c, C, tt, narrow, scNow, scR, scDefs, setSc, setAOver, setPage, PRICE } = P;
   const waccs = [7.5, 8, 8.5, 9, 9.5, 10];
   const tgs = [1.5, 2, 2.5, 3, 3.5];
   const base = scNow.base;
@@ -1028,7 +1091,7 @@ function ScenariosPage(P: any) {
           Each scenario runs the full DCF. Adjust assumptions per scenario; outputs update immediately.
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols(narrow, '1fr 1fr 1fr'), gap: 10, marginBottom: 12 }}>
         {scDefs.map(([id, name, tone]: [ScenarioId, string, string]) => {
           const p = scNow[id];
           const r = scR[id];
@@ -1087,7 +1150,7 @@ function ScenariosPage(P: any) {
           );
         })}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols(narrow, '1.2fr 1fr'), gap: 10 }}>
         <div style={{ ...card, padding: '16px 18px' }}>
           <div style={{ ...cardTitle, marginBottom: 10 }}>{'Valuation range · ' + c.ccy + ' per share'}</div>
           {rangeChart(
@@ -1104,36 +1167,38 @@ function ScenariosPage(P: any) {
         </div>
         <div style={{ ...card, padding: '16px 18px' }}>
           <div style={{ ...cardTitle, marginBottom: 10 }}>{'Sensitivity · WACC × terminal growth (base case, ' + c.ccy + '/share)'}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 2, fontFamily: MONO, fontSize: 11 }}>
-            <div style={{ padding: 5, color: 'var(--mut)', fontSize: 9.5 }}>WACC \ g∞</div>
-            {tgs.map(t => (
-              <div key={t} style={{ padding: 5, textAlign: 'center', color: 'var(--mut)', fontSize: 10 }}>{t.toFixed(1) + '%'}</div>
-            ))}
-            {waccs.map(wv => (
-              <React.Fragment key={wv}>
-                <div style={{ padding: '6px 4px', textAlign: 'center', color: 'var(--mut)' }}>{wv.toFixed(1) + '%'}</div>
-                {tgs.map(tv => {
-                  const ps = dcf(c, { ...base, wacc: wv, tg: tv }).ps;
-                  const rel = ps / PRICE;
-                  const cur = Math.abs(wv - base.wacc) < 0.13 && Math.abs(tv - base.tg) < 0.13;
-                  return (
-                    <div
-                      key={tv}
-                      title={'WACC ' + wv + '% · terminal growth ' + tv + '% → ' + c.ccy + ' ' + ps.toFixed(0)}
-                      style={{
-                        padding: '6px 4px', textAlign: 'center', borderRadius: 3,
-                        background: rel > 1.05 ? 'var(--posBg)' : rel < 0.95 ? 'var(--negBg)' : 'var(--sur2)',
-                        color: rel > 1.05 ? 'var(--pos)' : rel < 0.95 ? 'var(--neg)' : 'var(--ink)',
-                        outline: cur ? '1.5px solid var(--acc)' : 'none',
-                        fontWeight: cur ? 700 : 400,
-                      }}
-                    >
-                      {ps.toFixed(0)}
-                    </div>
-                  );
-                })}
-              </React.Fragment>
-            ))}
+          <div style={narrow ? panX : undefined}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 2, fontFamily: MONO, fontSize: 11, minWidth: narrow ? 380 : undefined }}>
+              <div style={{ padding: 5, color: 'var(--mut)', fontSize: 9.5 }}>WACC \ g∞</div>
+              {tgs.map(t => (
+                <div key={t} style={{ padding: 5, textAlign: 'center', color: 'var(--mut)', fontSize: 10 }}>{t.toFixed(1) + '%'}</div>
+              ))}
+              {waccs.map(wv => (
+                <React.Fragment key={wv}>
+                  <div style={{ padding: '6px 4px', textAlign: 'center', color: 'var(--mut)' }}>{wv.toFixed(1) + '%'}</div>
+                  {tgs.map(tv => {
+                    const ps = dcf(c, { ...base, wacc: wv, tg: tv }).ps;
+                    const rel = ps / PRICE;
+                    const cur = Math.abs(wv - base.wacc) < 0.13 && Math.abs(tv - base.tg) < 0.13;
+                    return (
+                      <div
+                        key={tv}
+                        title={'WACC ' + wv + '% · terminal growth ' + tv + '% → ' + c.ccy + ' ' + ps.toFixed(0)}
+                        style={{
+                          padding: '6px 4px', textAlign: 'center', borderRadius: 3,
+                          background: rel > 1.05 ? 'var(--posBg)' : rel < 0.95 ? 'var(--negBg)' : 'var(--sur2)',
+                          color: rel > 1.05 ? 'var(--pos)' : rel < 0.95 ? 'var(--neg)' : 'var(--ink)',
+                          outline: cur ? '1.5px solid var(--acc)' : 'none',
+                          fontWeight: cur ? 700 : 400,
+                        }}
+                      >
+                        {ps.toFixed(0)}
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
           </div>
           <div style={{ fontSize: 10, color: 'var(--mut)', marginTop: 8 }}>
             Outlined cell = current base assumptions. Green above market price, red below.
@@ -1147,7 +1212,7 @@ function ScenariosPage(P: any) {
 // --------------------------------------------------------------- valuation
 
 function ValuationPage(P: any) {
-  const { c, C, tt, d, go, netDebt, PRICE, SH, eps25, eps26, ebitda26, rev26, pe, evE, evS, med, evps, scR, scNow } = P;
+  const { c, C, tt, d, go, narrow, netDebt, PRICE, SH, eps25, eps26, ebitda26, rev26, pe, evE, evS, med, evps, scR, scNow } = P;
   const ccy = c.ccy;
   const fy1 = 'FY' + String((c.fy0 + 1) % 100).padStart(2, '0');
   const fy5 = 'FY' + String((c.fy0 + 5) % 100).padStart(2, '0');
@@ -1190,7 +1255,7 @@ function ValuationPage(P: any) {
   return (
     <>
       <h1 style={{ fontSize: 19, fontWeight: 600, margin: '0 0 14px' }}>Valuation</h1>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: 10, marginBottom: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols(narrow, '1fr 1.3fr'), gap: 10, marginBottom: 10 }}>
         <div style={{ ...card, padding: '16px 18px' }}>
           <div style={{ ...cardTitle, marginBottom: 10 }}>DCF build-up (your Expectations assumptions)</div>
           {dcfRows.map(dr => (
@@ -1206,26 +1271,28 @@ function ValuationPage(P: any) {
         </div>
         <div style={{ ...card, padding: '16px 18px' }}>
           <div style={{ ...cardTitle, marginBottom: 10 }}>{'Trading multiples → implied share price (on ' + fy1 + 'E)'}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr 1fr', fontSize: 12 }}>
-            {['Method', 'Current', 'Hist. avg', 'Peer med.', 'Impl. price*'].map((h, i) => (
-              <div key={h} style={{ color: 'var(--mut)', fontSize: 10.5, padding: '4px 0', borderBottom: '1px solid var(--bor)', textAlign: i ? 'right' : 'left' }}>{h}</div>
-            ))}
-            {multRows.map(mr => (
-              <React.Fragment key={mr.m}>
-                <div style={{ padding: '7px 0', borderBottom: '1px solid var(--bor)' }}>{mr.m}</div>
-                <div style={{ padding: '7px 0', borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO }}>{mr.cur}</div>
-                <div style={{ padding: '7px 0', borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, color: 'var(--mut)' }}>{mr.hist}</div>
-                <div style={{ padding: '7px 0', borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, color: 'var(--mut)' }}>{mr.peer}</div>
-                <div style={{ padding: '7px 0', borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, fontWeight: 600 }}>{mr.impl}</div>
-              </React.Fragment>
-            ))}
+          <div style={narrow ? panX : undefined}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr 1fr', fontSize: 12, minWidth: narrow ? 420 : undefined }}>
+              {['Method', 'Current', 'Hist. avg', 'Peer med.', 'Impl. price*'].map((h, i) => (
+                <div key={h} style={{ color: 'var(--mut)', fontSize: 10.5, padding: '4px 0', borderBottom: '1px solid var(--bor)', textAlign: i ? 'right' : 'left' }}>{h}</div>
+              ))}
+              {multRows.map(mr => (
+                <React.Fragment key={mr.m}>
+                  <div style={{ padding: '7px 0', borderBottom: '1px solid var(--bor)' }}>{mr.m}</div>
+                  <div style={{ padding: '7px 0', borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO }}>{mr.cur}</div>
+                  <div style={{ padding: '7px 0', borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, color: 'var(--mut)' }}>{mr.hist}</div>
+                  <div style={{ padding: '7px 0', borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, color: 'var(--mut)' }}>{mr.peer}</div>
+                  <div style={{ padding: '7px 0', borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, fontWeight: 600 }}>{mr.impl}</div>
+                </React.Fragment>
+              ))}
+            </div>
           </div>
           <div style={{ fontSize: 10, color: 'var(--mut)', marginTop: 10 }}>
             *At peer-median multiple. Range across Bear/Base/Bull earnings shown in the football field.
           </div>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols(narrow, '1.3fr 1fr'), gap: 10 }}>
         <div style={{ ...card, padding: '16px 18px' }}>
           <div style={{ ...cardTitle, marginBottom: 10 }}>{'Football field · ' + ccy + ' per share'}</div>
           {rangeChart(field, PRICE, C, tt, undefined, ccy)}
@@ -1245,11 +1312,12 @@ function ValuationPage(P: any) {
 // ------------------------------------------------------------------- peers
 
 function PeersPage(P: any) {
-  const { c, C, tt } = P;
+  const { c, C, tt, narrow } = P;
   const peerHead: [string, 'left' | 'right'][] = [
     ['Company', 'left'], ['Mkt cap bn', 'right'], ['Rev growth', 'right'], ['EBITDA m.', 'right'], ['EBIT m.', 'right'],
     ['ROIC', 'right'], ['P/E', 'right'], ['EV/EBITDA', 'right'], ['EV/Sales', 'right'], ['FCF yield', 'right'],
   ];
+  const peerLabelCell: React.CSSProperties = { position: 'sticky', left: 0, zIndex: 1, background: 'var(--sur)', borderRight: '1px solid var(--bor)', overflow: 'hidden', textOverflow: 'ellipsis' };
   const fmts: ((v: number) => string)[] = [
     v => v.toFixed(0), v => v.toFixed(1) + '%', v => v.toFixed(1) + '%', v => v.toFixed(1) + '%',
     v => v.toFixed(1) + '%', v => v.toFixed(1) + 'x', v => v.toFixed(1) + 'x', v => v.toFixed(1) + 'x', v => v.toFixed(1) + '%',
@@ -1262,18 +1330,18 @@ function PeersPage(P: any) {
           {c.ticker} was loaded from the live API; the comparison universe below is the built-in mock peer set (NOK), shown for reference. Multiples and margins are unit-free and remain broadly comparable.
         </div>
       )}
-      <div style={{ ...card, overflowX: 'auto', marginBottom: 10 }}>
-        <div style={{ minWidth: 960, display: 'grid', gridTemplateColumns: '1.6fr repeat(9,1fr)' }}>
-          {peerHead.map(([l, al]) => (
-            <div key={l} style={{ padding: '9px 12px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--mut)', borderBottom: '1px solid var(--bor2)', textAlign: al }}>{l}</div>
+      <div style={{ ...card, overflowX: 'auto', marginBottom: narrow ? 4 : 10 }}>
+        <div style={{ minWidth: narrow ? 780 : 960, display: 'grid', gridTemplateColumns: (narrow ? '150px' : '1.6fr') + ' repeat(9,1fr)' }}>
+          {peerHead.map(([l, al], i) => (
+            <div key={l} style={{ padding: '9px 12px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--mut)', borderBottom: '1px solid var(--bor2)', textAlign: al, ...(narrow && !i ? peerLabelCell : null) }}>{l}</div>
           ))}
           {PEERS.map(p => {
             const hl = p[0] === c.ticker;
             const bg = hl ? 'var(--accS)' : 'transparent';
             return (
               <React.Fragment key={p[0]}>
-                <div style={{ padding: '7px 12px', fontSize: 11.5, borderBottom: '1px solid var(--bor)', background: bg, fontWeight: hl ? 600 : 400, textAlign: 'left', fontFamily: SANS, color: 'var(--ink)', whiteSpace: 'nowrap' }}>
-                  {p[0] + ' · ' + p[1]}
+                <div style={{ padding: '7px 12px', fontSize: 11.5, borderBottom: '1px solid var(--bor)', background: bg, fontWeight: hl ? 600 : 400, textAlign: 'left', fontFamily: SANS, color: 'var(--ink)', whiteSpace: 'nowrap', ...(narrow ? { ...peerLabelCell, background: hl ? 'var(--accS)' : 'var(--sur)' } : null) }}>
+                  {narrow ? p[0] : p[0] + ' · ' + p[1]}
                 </div>
                 {fmts.map((f, i) => (
                   <div key={i} style={{ padding: '7px 12px', fontSize: 11.5, borderBottom: '1px solid var(--bor)', background: bg, fontWeight: hl ? 600 : 400, textAlign: 'right', fontFamily: MONO, color: 'var(--ink)', whiteSpace: 'nowrap' }}>
@@ -1285,7 +1353,10 @@ function PeersPage(P: any) {
           })}
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      {narrow && (
+        <div style={{ fontSize: 10.5, color: 'var(--mut)', margin: '0 0 10px' }}>Swipe the table sideways for the remaining columns.</div>
+      )}
+      <div style={{ display: 'grid', gridTemplateColumns: cols(narrow, '1fr 1fr'), gap: 10 }}>
         <div style={{ ...card, padding: '16px 18px' }}>
           <div style={{ ...cardTitle, marginBottom: 8 }}>Growth vs valuation · bubble = market cap</div>
           {scatterChart({ pts: PEERS.map(p => ({ t: p[0], x: p[3], y: p[9], m: p[2], hl: p[0] === c.ticker })), xl: 'Revenue growth, %', yl: 'EV / Sales, x', fx: v => v.toFixed(0) + '%', fy: v => v.toFixed(1), C }, tt)}
@@ -1308,17 +1379,17 @@ function PeersPage(P: any) {
 // ---------------------------------------------------------- investment case
 
 function CasePage(P: any) {
-  const { c, C, variantText } = P;
+  const { c, C, narrow, variantText } = P;
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px 12px', marginBottom: 16 }}>
         <h1 style={{ fontSize: 19, fontWeight: 600, margin: 0 }}>Investment case</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 11, color: 'var(--mut)' }}>Rating</span>
           <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', padding: '3px 10px', borderRadius: 3, background: 'var(--estBg)', color: 'var(--est)', fontFamily: MONO }}>{c.rating}</span>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols(narrow, '1.3fr 1fr'), gap: 10, marginBottom: 10 }}>
         <div style={{ ...card, padding: '16px 20px' }}>
           <div style={{ ...cardTitle, marginBottom: 12 }}>Investment thesis</div>
           {c.thesis.map((th: { n: string; h: string; t: string }) => (
@@ -1358,23 +1429,28 @@ function CasePage(P: any) {
       </div>
       <div style={card}>
         <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--bor)', ...cardTitle }}>Quarterly monitoring dashboard</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1fr .9fr' }}>
-          {[
-            ['KPI', 'left', 18], ['Latest', 'right', 12], ['Estimate', 'right', 12], ['Trend (8Q)', 'left', 12], ['Status', 'left', 18],
-          ].map(([h, al, px]) => (
-            <div key={h as string} style={{ padding: `8px ${px}px`, fontSize: 10, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid var(--bor)', textAlign: al as any }}>{h}</div>
-          ))}
-          {c.kpis.map((k: any) => (
-            <React.Fragment key={k.l}>
-              <div style={{ padding: '9px 18px', fontSize: 12.5, borderBottom: '1px solid var(--bor)' }}>{k.l}</div>
-              <div style={{ padding: '9px 12px', fontSize: 12, borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, fontWeight: 600 }}>{k.latest}</div>
-              <div style={{ padding: '9px 12px', fontSize: 12, borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, color: 'var(--mut)' }}>{k.est}</div>
-              <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--bor)' }}>{sparkline(k.vals, !!k.good, C)}</div>
-              <div style={{ padding: '9px 18px', borderBottom: '1px solid var(--bor)' }}>
-                <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.05em', padding: '2px 8px', borderRadius: 3, background: k.st === 'ON TRACK' ? 'var(--posBg)' : k.st === 'WATCH' ? 'var(--estBg)' : 'var(--negBg)', color: k.st === 'ON TRACK' ? 'var(--pos)' : k.st === 'WATCH' ? 'var(--est)' : 'var(--neg)', fontFamily: MONO }}>{k.st}</span>
-              </div>
-            </React.Fragment>
-          ))}
+        {narrow && (
+          <div style={{ padding: '0 18px 8px', fontSize: 10.5, color: 'var(--mut)' }}>Swipe sideways for the trend and status columns.</div>
+        )}
+        <div style={narrow ? panX : undefined}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1fr .9fr', minWidth: narrow ? 580 : undefined }}>
+            {[
+              ['KPI', 'left', 18], ['Latest', 'right', 12], ['Estimate', 'right', 12], ['Trend (8Q)', 'left', 12], ['Status', 'left', 18],
+            ].map(([h, al, px]) => (
+              <div key={h as string} style={{ padding: `8px ${px}px`, fontSize: 10, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid var(--bor)', textAlign: al as any }}>{h}</div>
+            ))}
+            {c.kpis.map((k: any) => (
+              <React.Fragment key={k.l}>
+                <div style={{ padding: '9px 18px', fontSize: 12.5, borderBottom: '1px solid var(--bor)' }}>{k.l}</div>
+                <div style={{ padding: '9px 12px', fontSize: 12, borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, fontWeight: 600 }}>{k.latest}</div>
+                <div style={{ padding: '9px 12px', fontSize: 12, borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, color: 'var(--mut)' }}>{k.est}</div>
+                <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--bor)' }}>{sparkline(k.vals, !!k.good, C)}</div>
+                <div style={{ padding: '9px 18px', borderBottom: '1px solid var(--bor)' }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.05em', padding: '2px 8px', borderRadius: 3, background: k.st === 'ON TRACK' ? 'var(--posBg)' : k.st === 'WATCH' ? 'var(--estBg)' : 'var(--negBg)', color: k.st === 'ON TRACK' ? 'var(--pos)' : k.st === 'WATCH' ? 'var(--est)' : 'var(--neg)', fontFamily: MONO }}>{k.st}</span>
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
         </div>
       </div>
     </>
