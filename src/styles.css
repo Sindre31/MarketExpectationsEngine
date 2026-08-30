@@ -3,7 +3,11 @@ body {
   margin: 0;
   padding: 0;
 }
+html {
+  -webkit-text-size-adjust: 100%;
+}
 body {
+  color-scheme: light;
   --bg: #f4f3ef;
   --sur: #fdfdfb;
   --sur2: #edebe5;
@@ -23,6 +27,7 @@ body {
   background: var(--bg);
 }
 body[data-theme='dark'] {
+  color-scheme: dark;
   --bg: #0f1114;
   --sur: #16181c;
   --sur2: #1e2126;
@@ -92,6 +97,46 @@ input[type='text']:focus {
   background: var(--accS);
 }
 
+/* On phones the document itself scrolls, so the shell only has to fill the
+   visual viewport — 100vh counts the collapsing address bar, 100dvh doesn't. */
+[data-app-root] {
+  min-height: 100vh;
+}
+@supports (height: 100dvh) {
+  [data-app-root] {
+    min-height: 100dvh;
+  }
+}
+
+/* The nav collapses into a horizontally scrollable tab strip on narrow
+   screens; hide its scrollbar so the tabs keep their full height. */
+.mx-hscroll {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.mx-hscroll::-webkit-scrollbar {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  /* a 16px-tall thumb is hard to grab with a fingertip */
+  input[type='range'] {
+    height: 30px;
+  }
+}
+
+@media (max-width: 860px) {
+  /* iOS zooms the page in when a focused field is under 16px */
+  input[type='number'],
+  input[type='text'] {
+    font-size: 16px;
+  }
+  input[type='number'] {
+    width: 74px;
+    padding: 3px 6px;
+  }
+}
+
 @media print {
   body {
     background: #fff;
@@ -101,6 +146,7 @@ input[type='text']:focus {
   }
   [data-app-root] {
     height: auto !important;
+    min-height: 0 !important;
     overflow: visible !important;
     display: block !important;
   }
