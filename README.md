@@ -64,6 +64,29 @@ those are the only ones with fundamentals: local tickers (`EQNR.OL`,
 verified set is EQNR, NVO, ERIC, NOK, ALV, FRO and GMAB. Anything else can
 still be added by ticker on the Peers page.
 
+One wrinkle worth knowing when extending the industry map: the provider mixes
+two taxonomies. IBM reports `INFORMATION TECHNOLOGY SERVICES` (SIC-flavoured)
+while Novo Nordisk reports `DRUG MANUFACTURERS - GENERAL` and Ericsson
+`COMMUNICATION EQUIPMENT` (modern sector names). `BY_INDUSTRY` matches both
+spellings of each industry.
+
+A group of five loads **automatically** whenever a live company is fetched, in
+the background: the company renders as soon as its own data lands, the header
+shows `Loading peers n/5…`, and the peer-median columns light up as the group
+arrives. On the Peers page you can reload the suggestion, add any ticker by hand
+(the escape hatch for anything the universe misses, including non-US listings),
+or drop a name. Each peer costs exactly **one** request, and a group is cached
+per company for 24h, so a live company costs 6 requests the first time and 11
+with its peer group — budget accordingly against the free tier's 25/day.
+
+Two honest limits, surfaced in the UI rather than papered over: one `OVERVIEW`
+call exposes **return on equity, not ROIC**, so the column and scatter axis are
+relabelled ROE for live groups; and free cash flow yield is not published per
+company, so that column shows `–` for peers. The fictional Norwegian mock
+universe is never used as a stand-in for a live company — if the automatic load
+comes back empty (usually a spent quota), the peer-median columns read `–`
+rather than borrowing mock figures.
+
 ### What the live adapter will not invent
 
 Where the provider publishes nothing, the app shows `–` rather than a stand-in,
@@ -88,29 +111,6 @@ terminal growth stays 2.5% as a long-run nominal-GDP proxy. All of them are
 there to be disagreed with on the Expectations page — for a commodity cyclical
 a beta-derived rate tends to sit low.
 
-One wrinkle worth knowing when extending the industry map: the provider mixes
-two taxonomies. IBM reports `INFORMATION TECHNOLOGY SERVICES` (SIC-flavoured)
-while Novo Nordisk reports `DRUG MANUFACTURERS - GENERAL` and Ericsson
-`COMMUNICATION EQUIPMENT` (modern sector names). `BY_INDUSTRY` matches both
-spellings of each industry.
-
-A group of five loads **automatically** whenever a live company is fetched, in
-the background: the company renders as soon as its own data lands, the header
-shows `Loading peers n/5…`, and the peer-median columns light up as the group
-arrives. On the Peers page you can reload the suggestion, add any ticker by hand
-(the escape hatch for anything the universe misses, including non-US listings),
-or drop a name. Each peer costs exactly **one** request, and a group is cached
-per company for 24h, so a live company costs 6 requests the first time and 11
-with its peer group — budget accordingly against the free tier's 25/day.
-
-Two honest limits, surfaced in the UI rather than papered over: one `OVERVIEW`
-call exposes **return on equity, not ROIC**, so the column and scatter axis are
-relabelled ROE for live groups; and free cash flow yield is not published per
-company, so that column shows `–` for peers. The fictional Norwegian mock
-universe is never used as a stand-in for a live company — if the automatic load
-comes back empty (usually a spent quota), the peer-median columns read `–`
-rather than borrowing mock figures.
-
 ## Screens
 
 | # | Screen | What it does |
@@ -121,7 +121,7 @@ rather than borrowing mock figures.
 | 04 | **Scenarios** | Bear/Base/Bull scenario cards, each running the full DCF live, plus a valuation range chart and a WACC × terminal-growth sensitivity grid |
 | 05 | **Valuation** | DCF build-up, trading multiples → implied price, football field, EPS bridge waterfall |
 | 06 | **Peers** | Peer comps table and growth-vs-valuation / quality-vs-multiple bubble scatters |
-| 07 | **Investment Case** | Thesis, catalysts, risks, variant perception (fed by the live reverse-DCF outputs), and a quarterly KPI monitoring dashboard with sparklines |
+| 07 | **Investment Case** | Thesis, catalysts, risks, variant perception (fed by the live reverse-DCF outputs), and a KPI dashboard with sparklines — quarterly for the mock set, annual on live data |
 
 Also: light/dark theme toggle (persisted), company search/switcher, crosshair
 tooltips on every chart (hover devices only), and a print-friendly Export (save
