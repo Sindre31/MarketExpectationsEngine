@@ -34,6 +34,18 @@ const CACHE: Record<string, number> = {
 
 const SAFE = /^[A-Za-z0-9 .\-:&]{1,40}$/;
 
+/**
+ * Upstream notices are shown to the user, and when the daily quota is spent the
+ * provider's own message quotes the API key back ("We have detected your API key
+ * as ..."). Forwarding that verbatim would publish the shared key to every
+ * visitor, so scrub the key itself plus anything key-shaped before replying.
+ */
+function redact(msg: string, key: string): string {
+  let out = key ? msg.split(key).join('***') : msg;
+  out = out.replace(/(API key(?: as)?\s*)[A-Z0-9]{8,}/gi, '$1***');
+  return out;
+}
+
 export default async function handler(req: any, res: any) {
   const key = process.env.ALPHAVANTAGE_API_KEY;
   if (!key) {
@@ -76,7 +88,7 @@ export default async function handler(req: any, res: any) {
     }
     if (notice) {
       res.setHeader('Cache-Control', 'no-store');
-      res.status(/per second|per day|rate limit|premium/i.test(notice) ? 429 : 502).json({ error: notice });
+      res.status(/per second|per day|rate limit|premium/i.test(notice) ? 429 : 502).json({ error: redact(notice, key) });
       return;
     }
 
