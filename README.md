@@ -19,16 +19,21 @@ requests go through two paths:
    Alpha Vantage with a key stored server-side. On Vercel, set the environment
    variable **`ALPHAVANTAGE_API_KEY`** (Project → Settings → Environment
    Variables) and redeploy. The function only allows the seven read-only
-   endpoints the app uses and caches responses at the edge (filings 6–24h,
-   quotes 5 min) to stretch the key's quota.
+   endpoints the app uses and caches successful responses at the edge (filings
+   6–24h, quotes 5 min) to stretch the key's quota. The provider reports rate
+   limits and bad symbols as HTTP 200 with a notice payload, so those are
+   detected and passed through uncached — otherwise one throttled request
+   would be served to every visitor until it expired.
 2. **Personal key** — click **API** in the header and paste your own free key
    from [alphavantage.co](https://www.alphavantage.co/support/#api-key); it is
    stored only in your browser's `localStorage` and used directly, bypassing
    the shared proxy.
 
 One company load uses 6 API requests (overview, quote, income statement,
-balance sheet, cash flow, monthly prices), fetched sequentially to respect the
-API's burst limit; the free tier allows 25 requests/day per key.
+balance sheet, cash flow, monthly prices), fetched about a second apart because
+the free tier allows one request per second; a load therefore takes ~7s the
+first time and is near-instant afterwards from the edge cache. The free tier
+also caps usage at 25 requests/day per key — roughly four cold company loads.
 
 The adapter (`src/live.ts`) maps real filings into the model: the last four
 fiscal years are reported actuals, the four estimate years are trend
