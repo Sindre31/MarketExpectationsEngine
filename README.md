@@ -48,6 +48,28 @@ of liquid listed names grouped by what they do and matches it against the
 company's own reported industry — loading IBM picks ACN, INFY, CTSH, DXC and
 EPAM.
 
+A Nordic company leads with Nordic comparables and is topped up from the wider
+list, so the group is regionally relevant without being too thin to compare
+against: Equinor gets Frontline then the oil majors, Novo Nordisk gets Genmab
+then the big pharma names, Ericsson gets Nokia then the hardware set. A company
+counts as Nordic by ticker, reporting currency, exchange, or a Nordic corporate
+form in its name (ASA, A/S, AB, Oyj) — the last catches ADRs, which list in USD
+on a US exchange. US companies are unaffected.
+
+**Nordic coverage is limited by the provider, not by choice.** Every Nordic
+ticker in the universe is a primary US listing or a NYSE/NASDAQ ADR, because
+those are the only ones with fundamentals: local tickers (`EQNR.OL`,
+`NOVO-B.CO`, `ERIC-B.ST`) and OTC pink-sheet ADRs (`NHYDY`, `YARIY`, `DNNGY`,
+`ATLKY`, `VLVLY`, `NRDBY`) were all tested and return nothing at all. The
+verified set is EQNR, NVO, ERIC, NOK, ALV, FRO and GMAB. Anything else can
+still be added by ticker on the Peers page.
+
+One wrinkle worth knowing when extending the industry map: the provider mixes
+two taxonomies. IBM reports `INFORMATION TECHNOLOGY SERVICES` (SIC-flavoured)
+while Novo Nordisk reports `DRUG MANUFACTURERS - GENERAL` and Ericsson
+`COMMUNICATION EQUIPMENT` (modern sector names). `BY_INDUSTRY` matches both
+spellings of each industry.
+
 A group of five loads **automatically** whenever a live company is fetched, in
 the background: the company renders as soon as its own data lands, the header
 shows `Loading peers n/5…`, and the peer-median columns light up as the group

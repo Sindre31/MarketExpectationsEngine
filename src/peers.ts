@@ -42,9 +42,78 @@ const UNIVERSE: Record<string, string[]> = {
   materials: ['FCX', 'NEM', 'NUE', 'VALE', 'RIO', 'BHP'],
 };
 
-/** Industry-string patterns, most specific first. */
+/**
+ * Nordic names, kept separate so a Nordic company is compared against its own
+ * region first and topped up from the list above.
+ *
+ * These are all primary US listings or NYSE/NASDAQ ADRs. That is not a
+ * preference but a coverage limit: the provider returns no fundamentals for
+ * local Nordic tickers (EQNR.OL, NOVO-B.CO, ERIC-B.ST all come back empty),
+ * nor for OTC pink-sheet ADRs (NHYDY, YARIY, DNNGY, ATLKY, VLVLY, NRDBY were
+ * all tested and returned nothing). Every ticker here has been checked to
+ * return a usable OVERVIEW; anything else can still be added by hand on the
+ * Peers page.
+ */
+const NORDIC: Partial<Record<keyof typeof UNIVERSE, string[]>> = {
+  pharma: ['NVO', 'GMAB'],
+  biotech: ['GMAB', 'NVO'],
+  hardware: ['ERIC', 'NOK'],
+  telecom: ['ERIC', 'NOK'],
+  energy: ['EQNR', 'FRO'],
+  transport: ['FRO'],
+  autos: ['ALV'],
+  industrials: ['ALV', 'ERIC'],
+};
+
+/** Every verified Nordic ticker, for recognising a Nordic company by symbol. */
+const NORDIC_TICKERS = new Set(Object.values(NORDIC).flat());
+
+/** Currencies that mark a company as Nordic (NOK here is the krone, not Nokia). */
+const NORDIC_CCY = new Set(['NOK', 'SEK', 'DKK', 'ISK']);
+
+/**
+ * Nordic by any of: a verified Nordic ticker, a Nordic reporting currency, a
+ * Nordic exchange, or a Nordic corporate form in the name (ASA, A/S, AB, Oyj)
+ * — the last one catches ADRs, which list in USD on a US exchange.
+ */
+function isNordic(company: Company): boolean {
+  if (NORDIC_TICKERS.has(company.ticker.toUpperCase())) return true;
+  if (NORDIC_CCY.has((company.ccy || '').toUpperCase())) return true;
+  if (/OSLO|STOCKHOLM|COPENHAGEN|HELSINKI|NORDIC|BØRS|BORS/i.test(company.meta || '')) return true;
+  return /(\bASA\b|\bA\/S\b|\bAB\b|\bOyj\b|\bASA,)/i.test(company.name || '');
+}
+
+/**
+ * Industry-string patterns, most specific first.
+ *
+ * The provider mixes two taxonomies: an SIC-flavoured one ("SERVICES-PREPACKAGED
+ * SOFTWARE", "PHARMACEUTICAL PREPARATIONS") and a modern sector one
+ * ("DRUG MANUFACTURERS - GENERAL", "COMMUNICATION EQUIPMENT", "AUTO PARTS"),
+ * so both spellings of each industry are matched here.
+ */
 const BY_INDUSTRY: [RegExp, keyof typeof UNIVERSE][] = [
   [/SEMICONDUCTOR/, 'semiconductors'],
+  // modern taxonomy — checked before the broader legacy patterns below
+  [/DRUG MANUFACTURER/, 'pharma'],
+  [/BIOTECHNOLOGY/, 'biotech'],
+  [/MEDICAL (DEVICE|INSTRUMENT)|DIAGNOSTICS & RESEARCH|HEALTH INFORMATION/, 'medtech'],
+  [/COMMUNICATION EQUIPMENT|CONSUMER ELECTRONICS|COMPUTER HARDWARE/, 'hardware'],
+  [/TELECOM SERVICES/, 'telecom'],
+  [/AUTO (PARTS|MANUFACTURERS)/, 'autos'],
+  [/OIL & GAS/, 'energy'],
+  [/AEROSPACE & DEFENSE/, 'aerospace'],
+  [/CREDIT SERVICES/, 'payments'],
+  [/MARINE SHIPPING|INTEGRATED FREIGHT|RAILROADS|AIRLINES/, 'transport'],
+  [/SPECIALTY CHEMICALS|AGRICULTURAL INPUTS/, 'chemicals'],
+  [/SPECIALTY INDUSTRIAL MACHINERY|FARM & HEAVY CONSTRUCTION|INDUSTRIAL DISTRIBUTION|ELECTRICAL EQUIPMENT/, 'industrials'],
+  [/INTERNET CONTENT|ENTERTAINMENT/, 'internet'],
+  [/BEVERAGES|PACKAGED FOODS|CONFECTIONERS|FARM PRODUCTS/, 'foodBev'],
+  [/HOUSEHOLD & PERSONAL PRODUCTS|TOBACCO/, 'staples'],
+  [/SPECIALTY RETAIL|DISCOUNT STORES|INTERNET RETAIL|GROCERY STORES|HOME IMPROVEMENT/, 'retail'],
+  [/APPAREL|FOOTWEAR & ACCESSORIES/, 'apparel'],
+  [/UTILITIES/, 'utilities'],
+  [/OTHER INDUSTRIAL METALS|ALUMINUM|COPPER|GOLD|STEEL/, 'materials'],
+  // legacy SIC-flavoured patterns
   [/PREPACKAGED SOFTWARE|SOFTWARE/, 'software'],
   [/INFORMATION TECHNOLOGY SERVICES|COMPUTER PROGRAMMING|DATA PROCESSING/, 'itServices'],
   [/SEARCH|INTERNET|ONLINE|WEB/, 'internet'],
@@ -82,13 +151,19 @@ const BY_SECTOR: [RegExp, keyof typeof UNIVERSE][] = [
   [/TRADE|SERVICES/, 'retail'],
 ];
 
-/** Tickers to compare a company against, excluding the company itself. */
+/**
+ * Tickers to compare a company against, excluding the company itself. A Nordic
+ * company leads with Nordic names and is topped up from the wider list, so the
+ * group is regionally relevant without being too thin to be a comparison.
+ */
 export function suggestPeers(company: Company, limit = 6): string[] {
   const industry = (company.meta || '').toUpperCase();
   const hit =
     BY_INDUSTRY.find(([re]) => re.test(industry)) || BY_SECTOR.find(([re]) => re.test(industry));
-  const group = hit ? UNIVERSE[hit[1]] : UNIVERSE.industrials;
-  return group.filter(t => t !== company.ticker.toUpperCase()).slice(0, limit);
+  const key = hit ? hit[1] : 'industrials';
+  const self = company.ticker.toUpperCase();
+  const ordered = isNordic(company) ? [...(NORDIC[key] || []), ...UNIVERSE[key]] : UNIVERSE[key];
+  return ordered.filter((t, i, a) => t !== self && a.indexOf(t) === i).slice(0, limit);
 }
 
 const num = (x: unknown): number => {
