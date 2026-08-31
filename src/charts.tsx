@@ -242,7 +242,7 @@ export function scatterChart(cfg: ScatterCfg, tt: TipFn) {
   const h = 250;
   const pl = 46;
   const pr = 14;
-  const pt = 12;
+  const pt = 26; // leaves the y-axis caption clear of the top gridline label
   const pb = 34;
   let xmn = 1e9, xmx = -1e9, ymn = 1e9, ymx = -1e9;
   pts.forEach(p => {
@@ -265,7 +265,7 @@ export function scatterChart(cfg: ScatterCfg, tt: TipFn) {
     k.push(<text key={'gx' + i} x={x} y={h - 20} fontSize={9} fill={C.txt} textAnchor="middle" fontFamily={MONO}>{fx(xv)}</text>);
   }
   k.push(<text key="xl" x={(pl + w - pr) / 2} y={h - 4} fontSize={9.5} fill={C.txt} textAnchor="middle" fontFamily={SANS}>{xl}</text>);
-  k.push(<text key="yl" x={10} y={pt + 2} fontSize={9.5} fill={C.txt} fontFamily={SANS}>{yl}</text>);
+  k.push(<text key="yl" x={10} y={11} fontSize={9.5} fill={C.txt} fontFamily={SANS}>{yl}</text>);
   pts.forEach((p, i) => {
     const r = 4 + Math.sqrt(p.m) / 2.2;
     k.push(

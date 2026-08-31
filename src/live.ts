@@ -63,6 +63,9 @@ async function av(params: Record<string, string>, apiKey: string): Promise<any> 
   }
 }
 
+/** Same request path (personal key or shared proxy) for other live modules. */
+export const avQuery = av;
+
 export interface SearchHit {
   symbol: string;
   name: string;

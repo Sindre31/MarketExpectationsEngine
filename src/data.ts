@@ -224,18 +224,57 @@ export const CO: Record<string, Company> = {
   },
 };
 
-/**
- * [ticker, name, mktCap bn, revGrowth %, EBITDA m %, EBIT m %, ROIC %,
- *  P/E x, EV/EBITDA x, EV/Sales x, FCF yield %]
- */
-export type PeerRow = [string, string, number, number, number, number, number, number, number, number, number];
+export interface Peer {
+  ticker: string;
+  name: string;
+  /** market capitalisation, bn of `ccy` */
+  mcap: number;
+  /** revenue growth, % */
+  revG: number;
+  /** EBITDA margin, % */
+  ebitdaM: number;
+  /** EBIT margin, % */
+  ebitM: number;
+  /**
+   * Return on capital, %. The mock set carries true ROIC; a live peer carries
+   * ROE, which is all one OVERVIEW call exposes — `qualityLabel` on the peer
+   * set says which, so the column is never mislabelled.
+   */
+  quality: number;
+  /** P/E, x */
+  pe: number;
+  /** EV/EBITDA, x */
+  evEbitda: number;
+  /** EV/Sales, x */
+  evSales: number;
+  /** free cash flow yield, % — null when the source does not report it */
+  fcfY: number | null;
+  ccy: string;
+  live?: boolean;
+}
 
-export const PEERS: PeerRow[] = [
-  ['NDLS', 'Nordlys Semiconductor', 142.4, 12.4, 28.4, 22.9, 17.9, 24.4, 15.0, 4.4, 3.1],
-  ['VSTM', 'Vestbo Micro', 218, 8.0, 31.6, 25.6, 20.1, 25.8, 17.0, 5.4, 4.0],
-  ['ALDP', 'Aldra Power Semi', 96, 7.1, 24.5, 18.9, 12.8, 19.8, 11.9, 2.9, 4.4],
-  ['KVTK', 'Kvantek', 61, 15.6, 22.1, 16.4, 11.2, 31.5, 17.8, 3.9, 1.9],
-  ['HELS', 'Helios Sensor', 174, 8.9, 29.8, 23.6, 16.4, 22.3, 13.8, 4.1, 3.6],
-  ['BRND', 'Bornholm Devices', 44, 5.2, 20.3, 14.8, 9.6, 16.9, 9.8, 2.1, 5.2],
-  ['SRKM', 'Sarek Micro', 128, 11.2, 26.7, 21.0, 15.1, 23.1, 14.1, 3.8, 3.0],
-];
+export interface PeerSet {
+  peers: Peer[];
+  /** what the `quality` field actually measures, for column and axis labels */
+  qualityLabel: 'ROIC' | 'ROE';
+  live: boolean;
+}
+
+const mock = (
+  ticker: string, name: string, mcap: number, revG: number, ebitdaM: number,
+  ebitM: number, quality: number, pe: number, evEbitda: number, evSales: number, fcfY: number,
+): Peer => ({ ticker, name, mcap, revG, ebitdaM, ebitM, quality, pe, evEbitda, evSales, fcfY, ccy: 'NOK' });
+
+export const MOCK_PEERS: PeerSet = {
+  qualityLabel: 'ROIC',
+  live: false,
+  peers: [
+    mock('NDLS', 'Nordlys Semiconductor', 142.4, 12.4, 28.4, 22.9, 17.9, 24.4, 15.0, 4.4, 3.1),
+    mock('VSTM', 'Vestbo Micro', 218, 8.0, 31.6, 25.6, 20.1, 25.8, 17.0, 5.4, 4.0),
+    mock('ALDP', 'Aldra Power Semi', 96, 7.1, 24.5, 18.9, 12.8, 19.8, 11.9, 2.9, 4.4),
+    mock('KVTK', 'Kvantek', 61, 15.6, 22.1, 16.4, 11.2, 31.5, 17.8, 3.9, 1.9),
+    mock('HELS', 'Helios Sensor', 174, 8.9, 29.8, 23.6, 16.4, 22.3, 13.8, 4.1, 3.6),
+    mock('BRND', 'Bornholm Devices', 44, 5.2, 20.3, 14.8, 9.6, 16.9, 9.8, 2.1, 5.2),
+    mock('SRKM', 'Sarek Micro', 128, 11.2, 26.7, 21.0, 15.1, 23.1, 14.1, 3.8, 3.0),
+  ],
+};

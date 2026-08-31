@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CO, PEERS, type Assumptions, type Company, type ScenarioId } from './data';
+import { CO, MOCK_PEERS, type Assumptions, type Company, type Peer, type PeerSet, type ScenarioId } from './data';
+import { cachePeers, fetchPeerGroup, loadCachedPeers, suggestPeers } from './peers';
 import { dcf, solve } from './engine';
 import { LiveDataError, fetchLiveCompany, searchSymbols, type SearchHit } from './live';
 import {
@@ -156,6 +157,9 @@ export default function App() {
   const [loadingSym, setLoadingSym] = useState<string | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [hits, setHits] = useState<SearchHit[]>([]);
+  const [peerSets, setPeerSets] = useState<Record<string, Peer[]>>({});
+  const [peerBusy, setPeerBusy] = useState<{ done: number; total: number; sym: string } | null>(null);
+  const [peerNote, setPeerNote] = useState<string | null>(null);
   const narrow = useMedia(NARROW_Q);
   const canHover = useMedia('(hover: hover)');
 
@@ -261,11 +265,37 @@ export default function App() {
   const fcfY = (fcf25 / mcapM) * 100;
   const epsCagr = (Math.pow(eps[7] / eps26, 1 / 3) - 1) * 100;
   const peg = pe / epsCagr;
-  const others = PEERS.filter(p => p[0] !== c.ticker);
-  const med = (idx: number) => {
-    const s = others.map(p => p[idx] as number).sort((x, y) => x - y);
-    return s[Math.floor(s.length / 2)];
+  // ----- peer set: mock companies keep the built-in universe; a live company
+  // uses the live group once one has been loaded on the Peers page -----
+  const livePeers = peerSets[c.ticker];
+  const peerSet: PeerSet = livePeers
+    ? { peers: livePeers, qualityLabel: 'ROE', live: true }
+    : c.live
+      ? { peers: [], qualityLabel: 'ROE', live: true }
+      : MOCK_PEERS;
+
+  /** This company as a comparison row, so it plots alongside its peers. */
+  const selfPeer: Peer = {
+    ticker: c.ticker, name: c.name, mcap: mcapM / 1000, revG: growth[4],
+    ebitdaM: em[4], ebitM: ebm[4], quality: c.roic[3], pe, evEbitda: evE, evSales: evS,
+    fcfY, ccy: c.ccy, live: c.live,
   };
+  const peerRows: Peer[] = peerSet.peers.some(p => p.ticker === c.ticker)
+    ? peerSet.peers
+    : [selfPeer, ...peerSet.peers];
+  const others = peerSet.peers.filter(p => p.ticker !== c.ticker);
+
+  /** Median of a peer metric, or null when no peer reports it. */
+  const med = (pick: (p: Peer) => number | null): number | null => {
+    const s = others.map(pick).filter((v): v is number => v != null && isFinite(v)).sort((x, y) => x - y);
+    if (!s.length) return null;
+    const m = Math.floor(s.length / 2);
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  };
+  const medPe = med(p => p.pe);
+  const medEve = med(p => p.evEbitda);
+  const medEvs = med(p => p.evSales);
+  const medFcfy = med(p => p.fcfY);
   const evps = (m: number, b: number) => (m * b - netDebt) / SH;
 
   // scenarios
@@ -302,6 +332,42 @@ export default function App() {
     setTip(null);
   };
 
+  /** Fetch a comparison group (one request per name) and cache it. */
+  const loadPeerGroup = async (symbols: string[], replace: boolean) => {
+    const target = c.ticker;
+    const wanted = symbols
+      .map(s => s.trim().toUpperCase())
+      .filter(s => s && s !== target)
+      .filter((s, i, a) => a.indexOf(s) === i)
+      .filter(s => replace || !(peerSets[target] || []).some(p => p.ticker === s));
+    if (!wanted.length) return;
+    setPeerNote(null);
+    setPeerBusy({ done: 0, total: wanted.length, sym: wanted[0] });
+    try {
+      const { peers, failed } = await fetchPeerGroup(wanted, apiKey, (done, total, sym) =>
+        setPeerBusy({ done, total, sym }));
+      setPeerSets(s => {
+        const merged = replace ? peers : [...(s[target] || []), ...peers];
+        cachePeers(target, merged);
+        return { ...s, [target]: merged };
+      });
+      if (failed.length) setPeerNote('Could not load: ' + failed.join(', '));
+      else if (!peers.length) setPeerNote('No comparison data came back for those symbols.');
+    } catch (e) {
+      setPeerNote(e instanceof Error ? e.message : 'Could not load the peer group.');
+    } finally {
+      setPeerBusy(null);
+    }
+  };
+
+  const removePeer = (ticker: string) => {
+    setPeerSets(s => {
+      const next = (s[c.ticker] || []).filter(p => p.ticker !== ticker);
+      cachePeers(c.ticker, next);
+      return { ...s, [c.ticker]: next };
+    });
+  };
+
   const loadLive = async (sym: string) => {
     const t = sym.toUpperCase();
     if (companies[t]) {
@@ -313,6 +379,8 @@ export default function App() {
     try {
       const co = await fetchLiveCompany(t, apiKey);
       setCompanies(s => ({ ...s, [co.ticker]: co }));
+      const cached = loadCachedPeers(co.ticker);
+      if (cached) setPeerSets(s => ({ ...s, [co.ticker]: cached }));
       pickCompany(co.ticker);
     } catch (e) {
       setLoadErr(e instanceof LiveDataError ? e.message : 'Could not load ' + t + ' — check the symbol and your API key.');
@@ -560,7 +628,7 @@ export default function App() {
         <main data-main="1" style={{ flex: 1, minHeight: 0, overflowY: narrow ? 'visible' : 'auto', padding: narrow ? '14px 12px 40px' : '24px 26px 48px' }}>
           <div style={{ maxWidth: 1280, margin: '0 auto' }}>
             {page === 'overview' && (
-              <OverviewPage {...{ narrow, c, C, tt, go, period, setPeriod, rev, em, gm, ebm, eps, eps25, eps26, ebitda, ebitda26, rev26, fcf25, growth, evM, netDebt, pe, evE, evS, fcfY, peg, med, mcapM, YRS }} />
+              <OverviewPage {...{ narrow, c, C, tt, go, period, setPeriod, rev, em, gm, ebm, eps, eps25, eps26, ebitda, ebitda26, rev26, fcf25, growth, evM, netDebt, pe, evE, evS, fcfY, peg, mcapM, YRS, medPe, medEve, medEvs, medFcfy, peerSet }} />
             )}
             {page === 'expectations' && (
               <ExpectationsPage {...{ narrow, c, C, tt, a, d, setA, implG, implEm, implFcfM, implRoic, gap, assess, pct, PRICE, myPresets, presets, setPresets, setAOver, rev, fcf25, gapColor: gap > 5 ? 'var(--neg)' : gap < -5 ? 'var(--pos)' : 'var(--est)', barLoV, barHiV }} />
@@ -572,9 +640,9 @@ export default function App() {
               <ScenariosPage {...{ narrow, c, C, tt, scNow, scR, scDefs, setSc, setAOver, setPage, PRICE }} />
             )}
             {page === 'valuation' && (
-              <ValuationPage {...{ narrow, c, C, tt, d, go, netDebt, PRICE, SH, eps25, eps26, ebitda26, rev26, pe, evE, evS, med, evps, scR, scNow }} />
+              <ValuationPage {...{ narrow, c, C, tt, d, go, netDebt, PRICE, SH, eps25, eps26, ebitda26, rev26, pe, evE, evS, evps, scR, scNow, medPe, medEve, medEvs }} />
             )}
-            {page === 'peers' && <PeersPage {...{ c, C, tt, narrow }} />}
+            {page === 'peers' && <PeersPage {...{ c, C, tt, narrow, peerSet, peerRows, peerBusy, peerNote, setPeerNote, loadPeerGroup, removePeer, apiKey, go }} />}
             {page === 'case' && <CasePage {...{ c, C, narrow, variantText }} />}
           </div>
         </main>
@@ -594,7 +662,7 @@ export default function App() {
 // ---------------------------------------------------------------- overview
 
 function OverviewPage(P: any) {
-  const { c, C, tt, go, narrow, period, setPeriod, rev, em, gm, ebm, eps, eps25, eps26, ebitda, ebitda26, rev26, fcf25, growth, evM, netDebt, pe, evE, evS, fcfY, peg, med, mcapM, YRS } = P;
+  const { c, C, tt, go, narrow, period, setPeriod, rev, em, gm, ebm, eps, eps25, eps26, ebitda, ebitda26, rev26, fcf25, growth, evM, netDebt, pe, evE, evS, fcfY, peg, mcapM, YRS, medPe, medEve, medEvs, medFcfy, peerSet } = P;
   const ccy = c.ccy;
   const fx1 = (v: number) => v.toFixed(1) + 'x';
   const fp1 = (v: number) => v.toFixed(1) + '%';
@@ -603,15 +671,15 @@ function OverviewPage(P: any) {
     const s = (dd >= 0 ? '+' : '−') + Math.abs(dd).toFixed(pp ? 1 : 0) + (pp ? 'pp' : '%');
     return [s, Math.abs(dd) > (pp ? 0.5 : 10) ? 'var(--neg)' : 'var(--est)'];
   };
-  const mkVal = (m: string, cur: number, avg: number, peerV: number, fmt: (v: number) => string, pp?: boolean) => {
+  const mkVal = (m: string, cur: number, avg: number, peerV: number | null, fmt: (v: number) => string, pp?: boolean) => {
     const [s, col] = prem(cur, avg, pp);
-    return { m, cur: fmt(cur), avg: fmt(avg), peer: fmt(peerV), prem: s, premCol: col };
+    return { m, cur: fmt(cur), avg: fmt(avg), peer: peerV == null ? '–' : fmt(peerV), prem: s, premCol: col };
   };
   const valRows = [
-    mkVal('P/E (NTM)', pe, c.hist.pe, med(7), fx1),
-    mkVal('EV / EBITDA (NTM)', evE, c.hist.eve, med(8), fx1),
-    mkVal('EV / Sales (NTM)', evS, c.hist.evs, med(9), fx1),
-    mkVal('FCF yield', fcfY, c.hist.fcfy, med(10), fp1, true),
+    mkVal('P/E (NTM)', pe, c.hist.pe, medPe, fx1),
+    mkVal('EV / EBITDA (NTM)', evE, c.hist.eve, medEve, fx1),
+    mkVal('EV / Sales (NTM)', evS, c.hist.evs, medEvs, fx1),
+    mkVal('FCF yield', fcfY, c.hist.fcfy, medFcfy, fp1, true),
     mkVal('PEG (NTM)', peg, c.hist.peg, 1.9, fx1),
   ];
   const g25 = growth[3];
@@ -627,7 +695,7 @@ function OverviewPage(P: any) {
     { l: 'Free cash flow', v: ccy + ' ' + fB(fcf25) + 'bn', sub: ((fcf25 / rev[3]) * 100).toFixed(1) + '% margin', subCol: 'var(--mut)', tip: 'Operating cash flow less capex' },
     { l: 'ROIC', v: c.roic[3].toFixed(1) + '%', sub: fy1 + 'E ' + c.roic[4].toFixed(1) + '%', subCol: 'var(--pos)', tip: 'Return on invested capital — NOPAT / invested capital' },
     { l: 'Net debt / EBITDA', v: (ndE < 0 ? '−' : '') + Math.abs(ndE).toFixed(1) + 'x', sub: ndE < 0 ? 'Net cash ' + fB(-netDebt) + 'bn' : 'Net debt ' + fB(netDebt) + 'bn', subCol: ndE < 0.5 ? 'var(--pos)' : 'var(--est)', tip: 'Negative = net cash position' },
-    { l: 'FCF yield', v: fcfY.toFixed(1) + '%', sub: 'vs peers ' + med(10).toFixed(1) + '%', subCol: fcfY < med(10) ? 'var(--neg)' : 'var(--pos)', tip: 'Free cash flow / market cap' },
+    { l: 'FCF yield', v: fcfY.toFixed(1) + '%', sub: medFcfy == null ? 'of market cap' : 'vs peers ' + medFcfy.toFixed(1) + '%', subCol: medFcfy != null && fcfY < medFcfy ? 'var(--neg)' : 'var(--pos)', tip: 'Free cash flow / market cap' },
   ];
   // price chart
   const pn = period === '1Y' ? 5 : period === '3Y' ? 12 : 20;
@@ -1214,7 +1282,8 @@ function ScenariosPage(P: any) {
 // --------------------------------------------------------------- valuation
 
 function ValuationPage(P: any) {
-  const { c, C, tt, d, go, narrow, netDebt, PRICE, SH, eps25, eps26, ebitda26, rev26, pe, evE, evS, med, evps, scR, scNow } = P;
+  const { c, C, tt, d, go, narrow, netDebt, PRICE, SH, eps25, eps26, ebitda26, rev26, pe, evE, evS, evps, scR, scNow, medPe, medEve, medEvs } = P;
+  const mx = (v: number | null, unit: string) => (v == null ? '–' : v.toFixed(1) + unit);
   const ccy = c.ccy;
   const fy1 = 'FY' + String((c.fy0 + 1) % 100).padStart(2, '0');
   const fy5 = 'FY' + String((c.fy0 + 5) % 100).padStart(2, '0');
@@ -1229,9 +1298,9 @@ function ValuationPage(P: any) {
     { l: 'vs market price ' + PRICE.toFixed(2), v: (d.ps / PRICE - 1 >= 0 ? '+' : '') + ((d.ps / PRICE - 1) * 100).toFixed(1) + '%', fw: 600, lcol: 'var(--mut)', vcol: d.ps >= PRICE ? 'var(--pos)' : 'var(--neg)', bord: 'transparent' },
   ];
   const multRows = [
-    { m: 'P/E (' + fy1 + 'E EPS ' + eps26.toFixed(2) + ')', cur: pe.toFixed(1) + 'x', hist: c.hist.pe.toFixed(1) + 'x', peer: med(7).toFixed(1) + 'x', impl: (med(7) * eps26).toFixed(0) },
-    { m: 'EV/EBITDA (' + fy1 + 'E)', cur: evE.toFixed(1) + 'x', hist: c.hist.eve.toFixed(1) + 'x', peer: med(8).toFixed(1) + 'x', impl: evps(med(8), ebitda26).toFixed(0) },
-    { m: 'EV/Sales (' + fy1 + 'E)', cur: evS.toFixed(1) + 'x', hist: c.hist.evs.toFixed(1) + 'x', peer: med(9).toFixed(1) + 'x', impl: evps(med(9), rev26).toFixed(0) },
+    { m: 'P/E (' + fy1 + 'E EPS ' + eps26.toFixed(2) + ')', cur: pe.toFixed(1) + 'x', hist: c.hist.pe.toFixed(1) + 'x', peer: mx(medPe, 'x'), impl: medPe == null ? '–' : (medPe * eps26).toFixed(0) },
+    { m: 'EV/EBITDA (' + fy1 + 'E)', cur: evE.toFixed(1) + 'x', hist: c.hist.eve.toFixed(1) + 'x', peer: mx(medEve, 'x'), impl: medEve == null ? '–' : evps(medEve, ebitda26).toFixed(0) },
+    { m: 'EV/Sales (' + fy1 + 'E)', cur: evS.toFixed(1) + 'x', hist: c.hist.evs.toFixed(1) + 'x', peer: mx(medEvs, 'x'), impl: medEvs == null ? '–' : evps(medEvs, rev26).toFixed(0) },
   ];
   const field = [
     { label: 'DCF (Bear–Bull)', lo: scR.bear.ps, hi: scR.bull.ps, mid: scR.base.ps, c: C.s1 },
@@ -1314,40 +1383,123 @@ function ValuationPage(P: any) {
 // ------------------------------------------------------------------- peers
 
 function PeersPage(P: any) {
-  const { c, C, tt, narrow } = P;
+  const { c, C, tt, narrow, peerSet, peerRows, peerBusy, peerNote, setPeerNote, loadPeerGroup, removePeer, go } = P;
+  const [draft, setDraft] = useState('');
+  const suggested = suggestPeers(c);
+  const qLabel = peerSet.qualityLabel as 'ROIC' | 'ROE';
+  const editable = !!c.live;
+  const mixed = peerRows.some((p: Peer) => p.ccy !== c.ccy);
+
   const peerHead: [string, 'left' | 'right'][] = [
-    ['Company', 'left'], ['Mkt cap bn', 'right'], ['Rev growth', 'right'], ['EBITDA m.', 'right'], ['EBIT m.', 'right'],
-    ['ROIC', 'right'], ['P/E', 'right'], ['EV/EBITDA', 'right'], ['EV/Sales', 'right'], ['FCF yield', 'right'],
+    ['Company', 'left'], ['Mkt cap bn', 'right'], ['Rev growth', 'right'], ['EBITDA m.', 'right'],
+    ['EBIT m.', 'right'], [qLabel, 'right'], ['P/E', 'right'], ['EV/EBITDA', 'right'],
+    ['EV/Sales', 'right'], ['FCF yield', 'right'],
   ];
   const peerLabelCell: React.CSSProperties = { position: 'sticky', left: 0, zIndex: 1, background: 'var(--sur)', borderRight: '1px solid var(--bor)', overflow: 'hidden', textOverflow: 'ellipsis' };
-  const fmts: ((v: number) => string)[] = [
-    v => v.toFixed(0), v => v.toFixed(1) + '%', v => v.toFixed(1) + '%', v => v.toFixed(1) + '%',
-    v => v.toFixed(1) + '%', v => v.toFixed(1) + 'x', v => v.toFixed(1) + 'x', v => v.toFixed(1) + 'x', v => v.toFixed(1) + '%',
+  const pct = (v: number | null) => (v == null ? '–' : v.toFixed(1) + '%');
+  const mult = (v: number | null) => (v == null || !isFinite(v) || v <= 0 ? '–' : v.toFixed(1) + 'x');
+  const cells = (p: Peer): string[] => [
+    p.mcap.toFixed(0) + (mixed ? ' ' + p.ccy : ''),
+    pct(p.revG), pct(p.ebitdaM), pct(p.ebitM), pct(p.quality),
+    mult(p.pe), mult(p.evEbitda), mult(p.evSales), pct(p.fcfY),
   ];
+
+  const addDraft = () => {
+    const list = draft.split(/[,\s]+/).filter(Boolean);
+    if (list.length) loadPeerGroup(list, false);
+    setDraft('');
+  };
+
   return (
     <>
-      <h1 style={{ fontSize: 19, fontWeight: 600, margin: '0 0 14px' }}>Peer analysis</h1>
-      {c.live && (
-        <div style={{ background: 'var(--estBg)', border: '1px solid var(--bor)', borderRadius: 5, padding: '10px 14px', fontSize: 11.5, color: 'var(--est)', marginBottom: 10 }}>
-          {c.ticker} was loaded from the live API; the comparison universe below is the built-in mock peer set (NOK), shown for reference. Multiples and margins are unit-free and remain broadly comparable.
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+        <h1 style={{ fontSize: 19, fontWeight: 600, margin: 0 }}>Peer analysis</h1>
+        <span style={{ fontSize: 11, color: 'var(--mut)' }}>
+          {peerSet.live
+            ? peerSet.peers.length
+              ? peerSet.peers.length + ' live peers · one OVERVIEW request each'
+              : 'No peer group loaded yet'
+            : 'Built-in mock universe'}
+        </span>
+      </div>
+
+      {editable && (
+        <div data-print-hide="1" style={{ ...card, padding: '13px 16px', marginBottom: 10 }}>
+          {peerBusy ? (
+            <div style={{ fontSize: 12, color: 'var(--mut)' }}>
+              Loading peer {Math.min(peerBusy.done + 1, peerBusy.total)} of {peerBusy.total}
+              {peerBusy.sym ? ' · ' + peerBusy.sym : ''}…
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                className="hov-accS"
+                onClick={() => loadPeerGroup(suggested, true)}
+                style={{ background: 'none', border: '1px solid var(--bor2)', color: 'var(--acc)', borderRadius: 3, padding: '5px 11px', fontSize: 11.5, cursor: 'pointer', fontFamily: SANS }}
+              >
+                {peerSet.peers.length ? 'Reload' : 'Load'} suggested peers ({suggested.length} requests)
+              </button>
+              <span style={{ fontSize: 11, color: 'var(--mut)', fontFamily: MONO }}>{suggested.join(' · ')}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+                <input
+                  type="text"
+                  value={draft}
+                  placeholder="Add tickers…"
+                  onChange={e => setDraft(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addDraft(); }}
+                  style={{ background: 'var(--bg)', border: '1px solid var(--bor2)', borderRadius: 4, color: 'var(--ink)', fontSize: 12, padding: '5px 9px', width: 150, fontFamily: SANS }}
+                />
+                <button
+                  className="hov-sur2"
+                  onClick={addDraft}
+                  style={{ background: 'var(--sur)', border: '1px solid var(--bor2)', color: 'var(--ink)', borderRadius: 3, padding: '5px 11px', fontSize: 11.5, cursor: 'pointer', fontFamily: SANS }}
+                >
+                  Add
+                </button>
+              </span>
+            </div>
+          )}
+          {peerNote && (
+            <div style={{ fontSize: 11, color: 'var(--neg)', marginTop: 8 }}>
+              {peerNote}{' '}
+              <span onClick={() => setPeerNote(null)} style={{ cursor: 'pointer', color: 'var(--mut)' }}>×</span>
+            </div>
+          )}
         </div>
       )}
+
+      {editable && !peerSet.peers.length && !peerBusy && (
+        <div style={{ background: 'var(--estBg)', border: '1px solid var(--bor)', borderRadius: 5, padding: '10px 14px', fontSize: 11.5, color: 'var(--est)', marginBottom: 10 }}>
+          {c.ticker} is live data, so the mock Norwegian universe would not be a meaningful comparison — it is left out rather than shown as filler. Load a peer group above and the peer-median columns on Overview and Valuation fill in too.
+        </div>
+      )}
+
       <div style={{ ...card, overflowX: 'auto', marginBottom: narrow ? 4 : 10 }}>
         <div style={{ minWidth: narrow ? 780 : 960, display: 'grid', gridTemplateColumns: (narrow ? '150px' : '1.6fr') + ' repeat(9,1fr)' }}>
           {peerHead.map(([l, al], i) => (
             <div key={l} style={{ padding: '9px 12px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--mut)', borderBottom: '1px solid var(--bor2)', textAlign: al, ...(narrow && !i ? peerLabelCell : null) }}>{l}</div>
           ))}
-          {PEERS.map(p => {
-            const hl = p[0] === c.ticker;
+          {peerRows.map((p: Peer) => {
+            const hl = p.ticker === c.ticker;
             const bg = hl ? 'var(--accS)' : 'transparent';
             return (
-              <React.Fragment key={p[0]}>
-                <div style={{ padding: '7px 12px', fontSize: 11.5, borderBottom: '1px solid var(--bor)', background: bg, fontWeight: hl ? 600 : 400, textAlign: 'left', fontFamily: SANS, color: 'var(--ink)', whiteSpace: 'nowrap', ...(narrow ? { ...peerLabelCell, background: hl ? 'var(--accS)' : 'var(--sur)' } : null) }}>
-                  {narrow ? p[0] : p[0] + ' · ' + p[1]}
+              <React.Fragment key={p.ticker}>
+                <div style={{ padding: '7px 12px', fontSize: 11.5, borderBottom: '1px solid var(--bor)', background: bg, fontWeight: hl ? 600 : 400, textAlign: 'left', fontFamily: SANS, color: 'var(--ink)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6, ...(narrow ? { ...peerLabelCell, background: hl ? 'var(--accS)' : 'var(--sur)' } : null) }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{narrow ? p.ticker : p.ticker + ' · ' + p.name}</span>
+                  {editable && !hl && (
+                    <span
+                      data-print-hide="1"
+                      onClick={() => removePeer(p.ticker)}
+                      title={'Remove ' + p.ticker}
+                      style={{ cursor: 'pointer', color: 'var(--mut)', marginLeft: 'auto', paddingLeft: 6 }}
+                    >
+                      ×
+                    </span>
+                  )}
                 </div>
-                {fmts.map((f, i) => (
-                  <div key={i} style={{ padding: '7px 12px', fontSize: 11.5, borderBottom: '1px solid var(--bor)', background: bg, fontWeight: hl ? 600 : 400, textAlign: 'right', fontFamily: MONO, color: 'var(--ink)', whiteSpace: 'nowrap' }}>
-                    {f(p[i + 2] as number)}
+                {cells(p).map((v, i) => (
+                  <div key={i} style={{ padding: '7px 12px', fontSize: 11.5, borderBottom: '1px solid var(--bor)', background: bg, fontWeight: hl ? 600 : 400, textAlign: 'right', fontFamily: MONO, color: v === '–' ? 'var(--mut)' : 'var(--ink)', whiteSpace: 'nowrap' }}>
+                    {v}
                   </div>
                 ))}
               </React.Fragment>
@@ -1355,23 +1507,42 @@ function PeersPage(P: any) {
           })}
         </div>
       </div>
-      {narrow && (
-        <div style={{ fontSize: 10.5, color: 'var(--mut)', margin: '0 0 10px' }}>Swipe the table sideways for the remaining columns.</div>
-      )}
+
+      <div style={{ fontSize: 10.5, color: 'var(--mut)', margin: '0 0 10px' }}>
+        {narrow && 'Swipe the table sideways for the remaining columns. '}
+        {peerSet.live
+          ? qLabel + ' is return on equity — the return measure the provider exposes per company; ' +
+            'growth is the latest reported quarter year-on-year, and free cash flow yield is not published at this level.'
+          : 'Mock universe: ROIC, growth and FCF yield are modelled figures.'}
+        {mixed && ' Market caps are shown in each company’s own reporting currency; multiples and margins are currency-free.'}
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: cols(narrow, '1fr 1fr'), gap: 10 }}>
         <div style={{ ...card, padding: '16px 18px' }}>
           <div style={{ ...cardTitle, marginBottom: 8 }}>Growth vs valuation · bubble = market cap</div>
-          {scatterChart({ pts: PEERS.map(p => ({ t: p[0], x: p[3], y: p[9], m: p[2], hl: p[0] === c.ticker })), xl: 'Revenue growth, %', yl: 'EV / Sales, x', fx: v => v.toFixed(0) + '%', fy: v => v.toFixed(1), C }, tt)}
-          <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 6 }}>
-            Companies above the growth-for-multiple diagonal screen expensive; below it, cheap.
-          </div>
+          {peerRows.length > 1 ? (
+            <>
+              {scatterChart({ pts: peerRows.map((p: Peer) => ({ t: p.ticker, x: p.revG, y: p.evSales, m: Math.max(1, p.mcap), hl: p.ticker === c.ticker })), xl: 'Revenue growth, %', yl: 'EV / Sales, x', fx: v => v.toFixed(0) + '%', fy: v => v.toFixed(1), C, ccy: c.ccy }, tt)}
+              <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 6 }}>
+                Companies above the growth-for-multiple diagonal screen expensive; below it, cheap.
+              </div>
+            </>
+          ) : (
+            <div style={{ fontSize: 11.5, color: 'var(--mut)', padding: '28px 0' }}>Load a peer group to plot this comparison.</div>
+          )}
         </div>
         <div style={{ ...card, padding: '16px 18px' }}>
           <div style={{ ...cardTitle, marginBottom: 8 }}>Quality vs multiple · bubble = market cap</div>
-          {scatterChart({ pts: PEERS.map(p => ({ t: p[0], x: p[6], y: p[8], m: p[2], hl: p[0] === c.ticker })), xl: 'ROIC, %', yl: 'EV / EBITDA, x', fx: v => v.toFixed(0) + '%', fy: v => v.toFixed(0), C }, tt)}
-          <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 6 }}>
-            High-ROIC names command higher EV/EBITDA; outliers merit a closer look.
-          </div>
+          {peerRows.length > 1 ? (
+            <>
+              {scatterChart({ pts: peerRows.map((p: Peer) => ({ t: p.ticker, x: p.quality, y: p.evEbitda, m: Math.max(1, p.mcap), hl: p.ticker === c.ticker })), xl: qLabel + ', %', yl: 'EV / EBITDA, x', fx: v => v.toFixed(0) + '%', fy: v => v.toFixed(0), C, ccy: c.ccy }, tt)}
+              <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 6 }}>
+                High-{qLabel} names command higher EV/EBITDA; outliers merit a closer look.
+              </div>
+            </>
+          ) : (
+            <div style={{ fontSize: 11.5, color: 'var(--mut)', padding: '28px 0' }}>Load a peer group to plot this comparison.</div>
+          )}
         </div>
       </div>
     </>

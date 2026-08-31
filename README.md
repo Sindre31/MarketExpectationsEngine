@@ -41,6 +41,24 @@ extrapolations (labelled as such in the UI — Alpha Vantage does not provide
 analyst consensus), and everything downstream — reverse DCF, scenarios,
 sensitivity, valuation — runs unchanged in the company's reporting currency.
 
+### Live peer groups
+
+The provider has no "competitors" endpoint, so `src/peers.ts` keeps a universe
+of liquid listed names grouped by what they do and matches it against the
+company's own reported industry — loading IBM suggests ACN, INFY, CTSH, DXC and
+EPAM. On the Peers page you can load that suggestion, add any ticker by hand
+(the escape hatch for anything the universe misses, including non-US listings),
+or drop a name. Each peer costs exactly **one** request, and a group is cached
+per company for 24h so it is paid for once.
+
+Two honest limits, surfaced in the UI rather than papered over: one `OVERVIEW`
+call exposes **return on equity, not ROIC**, so the column and scatter axis are
+relabelled ROE for live groups; and free cash flow yield is not published per
+company, so that column shows `–` for peers. A live company starts with **no**
+peer group rather than being compared against the fictional Norwegian mock
+universe — until one is loaded, the peer-median columns on Overview and
+Valuation read `–`.
+
 ## Screens
 
 | # | Screen | What it does |
@@ -77,6 +95,8 @@ src/
   data.ts      mock company dataset + peer comps (the data contract)
   live.ts      Alpha Vantage adapter — fetches a real company and maps it
                into the same Company shape the mocks use
+  peers.ts     live peer groups — industry-matched suggestions, one request
+               per peer, cached per company
   engine.ts    the DCF engine and the bisection solver used for
                "what growth does the price imply?"
   charts.tsx   dependency-free SVG charts: line, combo bar+line, range/
