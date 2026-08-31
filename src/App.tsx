@@ -344,7 +344,7 @@ export default function App() {
    * is passed explicitly when loading for a company that has just been
    * fetched, since the selected-company state has not re-rendered yet.
    */
-  const loadPeerGroup = async (symbols: string[], replace: boolean, target = c.ticker) => {
+  const loadPeerGroup = async (symbols: string[], replace: boolean, target = c.ticker, initialDelayMs = 0) => {
     const wanted = symbols
       .map(s => s.trim().toUpperCase())
       .filter(s => s && s !== target)
@@ -355,7 +355,7 @@ export default function App() {
     setPeerBusy({ done: 0, total: wanted.length, sym: wanted[0] });
     try {
       const { peers, failed } = await fetchPeerGroup(wanted, apiKey, (done, total, sym) =>
-        setPeerBusy({ done, total, sym }));
+        setPeerBusy({ done, total, sym }), initialDelayMs);
       setPeerSets(s => {
         const merged = replace ? peers : [...(s[target] || []), ...peers];
         cachePeers(target, merged);
@@ -395,7 +395,7 @@ export default function App() {
       // Fill the comparison set in the background — the company is already on
       // screen, and the peer-median columns light up as the group arrives.
       if (!cached) {
-        void loadPeerGroup(suggestPeers(co, AUTO_PEERS), true, co.ticker);
+        void loadPeerGroup(suggestPeers(co, AUTO_PEERS), true, co.ticker, 1200);
       }
     } catch (e) {
       setLoadErr(e instanceof LiveDataError ? e.message : 'Could not load ' + t + ' — check the symbol and your API key.');

@@ -67,6 +67,10 @@ export default async function handler(req: any, res: any) {
     try {
       const parsed = JSON.parse(body);
       notice = parsed['Information'] || parsed['Error Message'] || parsed['Note'] || null;
+      // An empty object means "nothing for this symbol right now" — sometimes an
+      // unknown ticker, sometimes a hiccup. Either way it must not be cached, or
+      // a real company can go blank for the rest of the cache window.
+      if (!notice && Object.keys(parsed).length === 0) notice = `No data returned for "${req.query.symbol || ''}"`;
     } catch {
       notice = 'Malformed response from the market-data provider';
     }

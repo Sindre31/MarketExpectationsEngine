@@ -128,11 +128,15 @@ export async function fetchPeerGroup(
   symbols: string[],
   apiKey: string,
   onProgress?: (done: number, total: number, symbol: string) => void,
+  /** Wait before the first request — set when a company fetch just finished, so
+   *  the opening peer request does not land inside the provider's 1/sec window. */
+  initialDelayMs = 0,
 ): Promise<{ peers: Peer[]; failed: string[] }> {
   const peers: Peer[] = [];
   const failed: string[] = [];
   for (let i = 0; i < symbols.length; i++) {
     if (i) await new Promise(r => setTimeout(r, 1100));
+    else if (initialDelayMs) await new Promise(r => setTimeout(r, initialDelayMs));
     onProgress?.(i, symbols.length, symbols[i]);
     try {
       peers.push(await fetchPeer(symbols[i], apiKey));
