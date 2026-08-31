@@ -183,8 +183,8 @@ export interface RangeItem {
 }
 
 export function rangeChart(items: RangeItem[], marker: number, C: Palette, tt: TipFn, height?: number, ccy = 'NOK') {
-  const w = 560;
-  const pl = 128;
+  const w = 620;
+  const pl = 186; // fits the longest bar label ("EV/EBITDA 5.7–10.6x · peers")
   const pr = 44;
   const rh = 30;
   const h = height || items.length * rh + 34;
@@ -340,19 +340,29 @@ export function waterfallChart(items: WaterfallItem[], C: Palette, tt: TipFn, cc
   return <svg viewBox={`0 0 ${w} ${h}`} width="100%" style={{ display: 'block' }}>{k}</svg>;
 }
 
-export function sparkline(vals: number[], good: boolean, C: Palette) {
+/**
+ * `estFrom` marks where reported history stops and forecast begins; the
+ * forecast leg is drawn dashed so a trend line is never half-invented without
+ * saying so.
+ */
+export function sparkline(vals: number[], good: boolean, C: Palette, estFrom?: number) {
   const w = 84;
   const h = 24;
   const mn = Math.min(...vals);
   const mx = Math.max(...vals);
   const sp = mx - mn || 1;
-  let d = '';
-  vals.forEach((v, i) => {
-    d += (i ? 'L' : 'M') + (3 + ((w - 6) * i) / (vals.length - 1)).toFixed(1) + ' ' + (h - 3 - ((h - 7) * (v - mn)) / sp).toFixed(1);
-  });
+  const X = (i: number) => 3 + ((w - 6) * i) / (vals.length - 1);
+  const Y = (v: number) => h - 3 - ((h - 7) * (v - mn)) / sp;
+  const seg = (from: number, to: number) =>
+    vals.slice(from, to + 1).map((v, k) => (k ? 'L' : 'M') + X(from + k).toFixed(1) + ' ' + Y(v).toFixed(1)).join('');
+  const split = estFrom != null && estFrom > 0 && estFrom < vals.length - 1 ? estFrom : null;
+  const stroke = good ? C.s3 : C.neg;
   return (
     <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} style={{ display: 'block' }}>
-      <path d={d} fill="none" stroke={good ? C.s3 : C.neg} strokeWidth={1.5} />
+      <path d={seg(0, split ?? vals.length - 1)} fill="none" stroke={stroke} strokeWidth={1.5} />
+      {split != null && (
+        <path d={seg(split, vals.length - 1)} fill="none" stroke={stroke} strokeWidth={1.5} strokeDasharray="2 2" opacity={0.75} />
+      )}
     </svg>
   );
 }

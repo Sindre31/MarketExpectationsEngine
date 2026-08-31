@@ -12,6 +12,10 @@ export type ScenarioId = 'bear' | 'base' | 'bull';
 
 export interface Kpi {
   l: string;
+  /** index at which `vals` stops being reported and starts being forecast */
+  estFrom?: number;
+  /** what one point in `vals` spans, for the column label */
+  period?: 'quarter' | 'year';
   latest: string;
   est: string;
   vals: number[];
@@ -52,11 +56,23 @@ export interface Company {
   priceHist: number[];
   defA: Assumptions;
   scDef: Record<ScenarioId, Assumptions>;
-  hist: { pe: number; eve: number; evs: number; fcfy: number; peg: number };
-  wk52: [number, number];
-  peBand: [number, number];
-  eveBand: [number, number];
-  evsBand: [number, number];
+  /**
+   * Multiples as reported by the data source. Null where the source does not
+   * publish one — never a substitute figure, since these render in a column
+   * the reader takes to be reported fact.
+   */
+  hist: { pe: number | null; eve: number | null; evs: number | null; fcfy: number | null; peg: number | null };
+  /** 52-week trading range; null when not reported. */
+  wk52: [number, number] | null;
+  /**
+   * Historical trading bands for the football field. The mock set carries
+   * researched ranges; live data has none, and a spread around today's
+   * multiple would be arithmetic dressed as a trading history, so it is null
+   * and the football field falls back to ranges built from real peers.
+   */
+  peBand: [number, number] | null;
+  eveBand: [number, number] | null;
+  evsBand: [number, number] | null;
   rating: string;
   buyBelow: number;
   segs: [string, (r: number, i: number) => number][];

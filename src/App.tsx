@@ -308,6 +308,14 @@ export default function App() {
     const m = Math.floor(s.length / 2);
     return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
   };
+  /** Low–high of a peer metric, for football-field bars built from real peers. */
+  const peerRange = (pick: (p: Peer) => number | null): [number, number] | null => {
+    const v = others.map(pick).filter((x): x is number => x != null && isFinite(x) && x > 0).sort((a, b) => a - b);
+    return v.length >= 2 ? [v[0], v[v.length - 1]] : null;
+  };
+  const rangePe = peerRange(p => p.pe);
+  const rangeEve = peerRange(p => p.evEbitda);
+  const rangeEvs = peerRange(p => p.evSales);
   const medPe = med(p => p.pe);
   const medEve = med(p => p.evEbitda);
   const medEvs = med(p => p.evSales);
@@ -668,7 +676,7 @@ export default function App() {
               <ScenariosPage {...{ narrow, c, C, tt, scNow, scR, scDefs, setSc, setAOver, setPage, PRICE }} />
             )}
             {page === 'valuation' && (
-              <ValuationPage {...{ narrow, c, C, tt, d, go, netDebt, PRICE, SH, eps25, eps26, ebitda26, rev26, pe, evE, evS, evps, scR, scNow, medPe, medEve, medEvs }} />
+              <ValuationPage {...{ narrow, c, C, tt, d, go, netDebt, PRICE, SH, eps25, eps26, ebitda26, rev26, pe, evE, evS, evps, scR, scNow, medPe, medEve, medEvs, rangePe, rangeEve, rangeEvs }} />
             )}
             {page === 'peers' && <PeersPage {...{ c, C, tt, narrow, peerSet, peerRows, peerBusy, peerNote, setPeerNote, loadPeerGroup, removePeer, apiKey, go }} />}
             {page === 'case' && <CasePage {...{ c, C, narrow, variantText }} />}
@@ -699,11 +707,12 @@ function OverviewPage(P: any) {
     const s = (dd >= 0 ? '+' : '−') + Math.abs(dd).toFixed(pp ? 1 : 0) + (pp ? 'pp' : '%');
     return [s, Math.abs(dd) > (pp ? 0.5 : 10) ? 'var(--neg)' : 'var(--est)'];
   };
-  const mkVal = (m: string, cur: number, avg: number, peerV: number | null, fmt: (v: number) => string, pp?: boolean, meaningful = true) => {
+  const mkVal = (m: string, cur: number, avg: number | null, peerV: number | null, fmt: (v: number) => string, pp?: boolean, meaningful = true) => {
     const peer = peerV == null ? '–' : fmt(peerV);
     // a ratio built on negative earnings (PEG on a shrinking EPS base) is not a
     // number worth showing, and the premium against it is noise
-    if (!meaningful) return { m, cur: '–', avg: fmt(avg), peer, prem: '–', premCol: 'var(--mut)' };
+    if (!meaningful) return { m, cur: '–', avg: avg == null ? '–' : fmt(avg), peer, prem: '–', premCol: 'var(--mut)' };
+    if (avg == null) return { m, cur: fmt(cur), avg: '–', peer, prem: '–', premCol: 'var(--mut)' };
     const [s, col] = prem(cur, avg, pp);
     return { m, cur: fmt(cur), avg: fmt(avg), peer, prem: s, premCol: col };
   };
@@ -1315,7 +1324,7 @@ function ScenariosPage(P: any) {
 // --------------------------------------------------------------- valuation
 
 function ValuationPage(P: any) {
-  const { c, C, tt, d, go, narrow, netDebt, PRICE, SH, eps25, eps26, ebitda26, rev26, pe, evE, evS, evps, scR, scNow, medPe, medEve, medEvs } = P;
+  const { c, C, tt, d, go, narrow, netDebt, PRICE, SH, eps25, eps26, ebitda26, rev26, pe, evE, evS, evps, scR, scNow, medPe, medEve, medEvs, rangePe, rangeEve, rangeEvs } = P;
   const mx = (v: number | null, unit: string) => (v == null ? '–' : v.toFixed(1) + unit);
   const ccy = c.ccy;
   const fy1 = 'FY' + String((c.fy0 + 1) % 100).padStart(2, '0');
@@ -1331,17 +1340,32 @@ function ValuationPage(P: any) {
     { l: 'vs market price ' + PRICE.toFixed(2), v: (d.ps / PRICE - 1 >= 0 ? '+' : '') + ((d.ps / PRICE - 1) * 100).toFixed(1) + '%', fw: 600, lcol: 'var(--mut)', vcol: d.ps >= PRICE ? 'var(--pos)' : 'var(--neg)', bord: 'transparent' },
   ];
   const multRows = [
-    { m: 'P/E (' + fy1 + 'E EPS ' + eps26.toFixed(2) + ')', cur: pe.toFixed(1) + 'x', hist: c.hist.pe.toFixed(1) + 'x', peer: mx(medPe, 'x'), impl: medPe == null ? '–' : (medPe * eps26).toFixed(0) },
-    { m: 'EV/EBITDA (' + fy1 + 'E)', cur: evE.toFixed(1) + 'x', hist: c.hist.eve.toFixed(1) + 'x', peer: mx(medEve, 'x'), impl: medEve == null ? '–' : evps(medEve, ebitda26).toFixed(0) },
-    { m: 'EV/Sales (' + fy1 + 'E)', cur: evS.toFixed(1) + 'x', hist: c.hist.evs.toFixed(1) + 'x', peer: mx(medEvs, 'x'), impl: medEvs == null ? '–' : evps(medEvs, rev26).toFixed(0) },
+    { m: 'P/E (' + fy1 + 'E EPS ' + eps26.toFixed(2) + ')', cur: pe.toFixed(1) + 'x', hist: mx(c.hist.pe, 'x'), peer: mx(medPe, 'x'), impl: medPe == null ? '–' : (medPe * eps26).toFixed(0) },
+    { m: 'EV/EBITDA (' + fy1 + 'E)', cur: evE.toFixed(1) + 'x', hist: mx(c.hist.eve, 'x'), peer: mx(medEve, 'x'), impl: medEve == null ? '–' : evps(medEve, ebitda26).toFixed(0) },
+    { m: 'EV/Sales (' + fy1 + 'E)', cur: evS.toFixed(1) + 'x', hist: mx(c.hist.evs, 'x'), peer: mx(medEvs, 'x'), impl: medEvs == null ? '–' : evps(medEvs, rev26).toFixed(0) },
   ];
-  const field = [
+  const field: any[] = [
     { label: 'DCF (Bear–Bull)', lo: scR.bear.ps, hi: scR.bull.ps, mid: scR.base.ps, c: C.s1 },
-    { label: 'P/E ' + c.peBand[0] + '–' + c.peBand[1] + 'x ' + fy1 + 'E', lo: c.peBand[0] * eps26, hi: c.peBand[1] * eps26, c: C.bar },
-    { label: 'EV/EBITDA ' + c.eveBand[0] + '–' + c.eveBand[1] + 'x', lo: evps(c.eveBand[0], ebitda26), hi: evps(c.eveBand[1], ebitda26), c: C.bar },
-    { label: 'EV/Sales ' + c.evsBand[0] + '–' + c.evsBand[1] + 'x', lo: evps(c.evsBand[0], rev26), hi: evps(c.evsBand[1], rev26), c: C.bar },
-    { label: '52-week range', lo: c.wk52[0], hi: c.wk52[1], c: C.barE },
   ];
+  // Multiple bars come from a researched trading band where one exists (the mock
+  // set) and otherwise from the live peer group's actual low–high. A spread
+  // around today's multiple would just be arithmetic wearing a band's clothes,
+  // so when neither source exists the bar is left out.
+  const bandBar = (
+    label: string, band: [number, number] | null, range: [number, number] | null,
+    toPrice: (m: number) => number,
+  ) => {
+    if (band) return { label: `${label} ${band[0]}–${band[1]}x`, lo: toPrice(band[0]), hi: toPrice(band[1]), c: C.bar };
+    if (range) return { label: `${label} ${range[0]}–${range[1]}x · peers`, lo: toPrice(range[0]), hi: toPrice(range[1]), c: C.bar };
+    return null;
+  };
+  field.push(
+    bandBar('P/E ' + fy1 + 'E', c.peBand, rangePe, (m: number) => m * eps26),
+    bandBar('EV/EBITDA', c.eveBand, rangeEve, (m: number) => evps(m, ebitda26)),
+    bandBar('EV/Sales', c.evsBand, rangeEvs, (m: number) => evps(m, rev26)),
+    c.wk52 ? { label: '52-week range', lo: c.wk52[0], hi: c.wk52[1], c: C.barE } : null,
+  );
+  const fieldBars = field.filter(Boolean);
   const base = scNow.base;
   const rf = Math.pow(1 + base.g / 100, 5);
   const brGrowth = eps25 * (rf - 1);
@@ -1399,7 +1423,12 @@ function ValuationPage(P: any) {
       <div style={{ display: 'grid', gridTemplateColumns: cols(narrow, '1.3fr 1fr'), gap: 10 }}>
         <div style={{ ...card, padding: '16px 18px' }}>
           <div style={{ ...cardTitle, marginBottom: 10 }}>{'Football field · ' + ccy + ' per share'}</div>
-          {rangeChart(field, PRICE, C, tt, undefined, ccy)}
+          {rangeChart(fieldBars, PRICE, C, tt, undefined, ccy)}
+          <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 8 }}>
+            {c.live
+              ? 'Multiple bars span the live peer group’s own low–high. Where no peer or reported range exists the bar is omitted rather than estimated.'
+              : 'Multiple bars use each metric’s historical trading band.'}
+          </div>
         </div>
         <div style={{ ...card, padding: '16px 18px' }}>
           <div style={{ ...cardTitle, marginBottom: 10 }}>{'EPS bridge FY' + String(c.fy0 % 100) + 'A → FY' + String((c.fy0 + 5) % 100) + 'E · base case, ' + ccy}</div>
@@ -1634,14 +1663,14 @@ function CasePage(P: any) {
         <div style={{ fontSize: 13, lineHeight: 1.6 }}>{variantText}</div>
       </div>
       <div style={card}>
-        <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--bor)', ...cardTitle }}>Quarterly monitoring dashboard</div>
+        <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--bor)', ...cardTitle }}>{c.kpis[0]?.period === 'year' ? 'Annual KPI dashboard' : 'Quarterly monitoring dashboard'}</div>
         {narrow && (
           <div style={{ padding: '0 18px 8px', fontSize: 10.5, color: 'var(--mut)' }}>Swipe sideways for the trend and status columns.</div>
         )}
         <div style={narrow ? panX : undefined}>
           <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1fr .9fr', minWidth: narrow ? 580 : undefined }}>
             {[
-              ['KPI', 'left', 18], ['Latest', 'right', 12], ['Estimate', 'right', 12], ['Trend (8Q)', 'left', 12], ['Status', 'left', 18],
+              ['KPI', 'left', 18], ['Latest', 'right', 12], ['Estimate', 'right', 12], [c.kpis[0]?.period === 'year' ? 'Trend (8Y)' : 'Trend (8Q)', 'left', 12], ['Status', 'left', 18],
             ].map(([h, al, px]) => (
               <div key={h as string} style={{ padding: `8px ${px}px`, fontSize: 10, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid var(--bor)', textAlign: al as any }}>{h}</div>
             ))}
@@ -1650,13 +1679,18 @@ function CasePage(P: any) {
                 <div style={{ padding: '9px 18px', fontSize: 12.5, borderBottom: '1px solid var(--bor)' }}>{k.l}</div>
                 <div style={{ padding: '9px 12px', fontSize: 12, borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, fontWeight: 600 }}>{k.latest}</div>
                 <div style={{ padding: '9px 12px', fontSize: 12, borderBottom: '1px solid var(--bor)', textAlign: 'right', fontFamily: MONO, color: 'var(--mut)' }}>{k.est}</div>
-                <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--bor)' }}>{sparkline(k.vals, !!k.good, C)}</div>
+                <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--bor)' }}>{sparkline(k.vals, !!k.good, C, k.estFrom)}</div>
                 <div style={{ padding: '9px 18px', borderBottom: '1px solid var(--bor)' }}>
                   <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.05em', padding: '2px 8px', borderRadius: 3, background: k.st === 'ON TRACK' ? 'var(--posBg)' : k.st === 'WATCH' ? 'var(--estBg)' : 'var(--negBg)', color: k.st === 'ON TRACK' ? 'var(--pos)' : k.st === 'WATCH' ? 'var(--est)' : 'var(--neg)', fontFamily: MONO }}>{k.st}</span>
                 </div>
               </React.Fragment>
             ))}
           </div>
+          {c.kpis[0]?.estFrom != null && (
+            <div style={{ padding: '9px 18px', fontSize: 10.5, color: 'var(--mut)', borderTop: '1px solid var(--bor)' }}>
+              Each point is a fiscal year. The dashed part of every trend is extrapolated, not reported.
+            </div>
+          )}
         </div>
       </div>
     </>

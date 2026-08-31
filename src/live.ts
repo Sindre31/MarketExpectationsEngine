@@ -184,14 +184,29 @@ export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<
   const M0 = em[3];
   const B0 = r1(M0 - daGap);
   const emT = r1(clamp(M0 + 2, 5, 45));
+  // A starting discount rate from the company's own risk rather than one number
+  // for every business: CAPM cost of equity, blended with after-tax cost of
+  // debt at its actual capital structure. The risk-free rate and equity risk
+  // premium are house assumptions — the WACC slider is there to disagree with.
+  const RF = 4.0;
+  const ERP = 5.0;
+  const DEBT_SPREAD = 1.5;
+  const beta = clamp(num(ov.Beta, 1) || 1, 0.3, 2.5);
+  const equityV = price * shares;
+  const debtV = Math.max(0, debtNow);
+  const ke = RF + beta * ERP;
+  const kd = (RF + DEBT_SPREAD) * (1 - taxPct / 100);
+  const waccNow = equityV + debtV > 0
+    ? r1(clamp((equityV * ke + debtV * kd) / (equityV + debtV), 6, 12))
+    : 8.5;
   const defA: Assumptions = {
     g: r1(clamp(consG, 0, 25)),
-    tg: 2.5,
+    tg: 2.5, // long-run nominal GDP proxy; not company-specific by design
     em: emT,
     eb: r1(clamp(emT - daGap, 5, 38)),
     tax: taxPct,
     capex: r1(clamp(capexA[3], 3, 12)),
-    wacc: 8.5,
+    wacc: waccNow,
   };
   const scDef = {
     bear: { ...defA, g: r1(clamp(defA.g - 4, 0, 22)), em: r1(clamp(defA.em - 3, 20, 42)), eb: r1(clamp(defA.eb - 3, 14, 36)), wacc: r1(defA.wacc + 1), tg: 1.5 },
@@ -203,17 +218,26 @@ export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<
   const mcapM = price * shares;
   const evM = mcapM + netDebt;
   const eps26 = ((rev[4] * (em[4] - daGap)) / 100) * 0.78 / shares;
-  const peNow = num(ov.ForwardPE, num(ov.TrailingPE, eps26 > 0 ? price / eps26 : 20));
-  const eveNow = num(ov.EVToEBITDA, (evM / ((rev[4] * em[4]) / 100)));
-  const evsNow = num(ov.EVToRevenue, evM / rev[4]);
+  // Reported multiples are passed through or left absent. Substituting a
+  // model-derived number (or a literal) would put our own arithmetic in a
+  // column the reader reads as the provider's reported fact.
+  const reported = (raw: unknown): number | null => {
+    const v = num(raw, NaN);
+    return isFinite(v) && v > 0 ? r1(v) : null;
+  };
+  const peNow = reported(ov.ForwardPE) ?? reported(ov.TrailingPE);
+  const eveNow = reported(ov.EVToEBITDA);
+  const evsNow = reported(ov.EVToRevenue);
   const ocf3 = num(cf[3].operatingCashflow, 0) / M;
   const fcf3 = ocf3 - Math.abs(num(cf[3].capitalExpenditures, 0)) / M;
-  const fcfyNow = mcapM > 0 ? r1((fcf3 / mcapM) * 100) : 3;
-  const pegNow = num(ov.PEGRatio, 2);
+  const fcfyNow = mcapM > 0 ? r1((fcf3 / mcapM) * 100) : null;
+  const pegNow = reported(ov.PEGRatio);
 
   const ccy = ov.Currency || 'USD';
   const fy0 = num(String(inc[3].fiscalDateEnding || '').slice(0, 4), new Date().getFullYear() - 1);
-  const band = (v: number, lo: number, hi: number): [number, number] => [r1(v * lo), r1(v * hi)];
+  const lo52 = reported(ov['52WeekLow']);
+  const hi52 = reported(ov['52WeekHigh']);
+  const wk52Now: [number, number] | null = lo52 != null && hi52 != null ? [lo52, hi52] : null;
 
   const gmTrendUp = gmA[3] >= gmA[0];
   const fcfM3 = revA[3] > 0 ? r1((fcf3 / revA[3]) * 100) : 0;
@@ -221,7 +245,7 @@ export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<
   const fcfMSeries = rev.map((r, i) => r1(clamp(em[i] - (taxPct * (em[i] - daGap)) / 100 - capexP[i], -30, 60)));
   const mkKpi = (l: string, vals: number[], fmt: (v: number) => string, higherIsBetter = true): Kpi => {
     const good: 0 | 1 = (higherIsBetter ? vals[3] >= vals[2] : vals[3] <= vals[2]) ? 1 : 0;
-    return { l, latest: fmt(vals[3]), est: fmt(vals[4]), vals, good, st: good ? 'ON TRACK' : 'WATCH' };
+    return { l, latest: fmt(vals[3]), est: fmt(vals[4]), vals, good, st: good ? 'ON TRACK' : 'WATCH', estFrom: 4, period: 'year' };
   };
 
   return {
@@ -249,11 +273,13 @@ export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<
     priceHist,
     defA,
     scDef,
-    hist: { pe: r1(peNow), eve: r1(eveNow), evs: r1(evsNow * 10) / 10, fcfy: fcfyNow, peg: r1(pegNow) },
-    wk52: [r1(num(ov['52WeekLow'], price * 0.75)), r1(num(ov['52WeekHigh'], price * 1.25))],
-    peBand: band(peNow, 0.85, 1.1),
-    eveBand: band(eveNow, 0.85, 1.1),
-    evsBand: band(evsNow, 0.85, 1.1),
+    hist: { pe: peNow, eve: eveNow, evs: evsNow, fcfy: fcfyNow, peg: pegNow },
+    wk52: wk52Now,
+    // no historical multiple ranges exist for live data; the football field
+    // builds its comparable bars from the peer group instead
+    peBand: null,
+    eveBand: null,
+    evsBand: null,
     rating: 'LIVE DATA · UNRATED',
     buyBelow: Math.round(price * 0.85),
     segs: [], // segment split is not available from this API
@@ -269,7 +295,9 @@ export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<
         ? `The reverse DCF prices in ${r1(clamp(gCagr, -5, 20))}%+ growth — any deceleration from the historical ${r1(gCagr)}% pace pressures the multiple.`
         : `Revenue has fallen ${r1(-gCagr)}% a year for three years; the estimate years assume that stabilises, which the price has to justify.`,
       `${netDebt > 0 ? `Net debt of ${(netDebt / 1000).toFixed(1)}bn ${ccy} adds leverage to the equity story.` : 'A rich valuation leaves little margin of safety despite the net cash position.'}`,
-      `At ${r1(peNow)}x forward earnings the market already assumes continued margin ${emA[3] >= emA[0] ? 'expansion' : 'recovery'}.`,
+      peNow != null
+        ? `At ${peNow}x forward earnings the market already assumes continued margin ${emA[3] >= emA[0] ? 'expansion' : 'recovery'}.`
+        : `The market already assumes continued margin ${emA[3] >= emA[0] ? 'expansion' : 'recovery'} — test how much in Expectations.`,
     ],
     debate: `This profile is generated from live filings: the model extrapolates ${consG.toFixed(0)}% consensus-proxy growth and terminal margins near ${emT.toFixed(0)}%. Use the Expectations page to test what the current price of ${ccy} ${price.toFixed(2)} really implies.`,
     thesis: [

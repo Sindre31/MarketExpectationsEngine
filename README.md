@@ -64,6 +64,30 @@ those are the only ones with fundamentals: local tickers (`EQNR.OL`,
 verified set is EQNR, NVO, ERIC, NOK, ALV, FRO and GMAB. Anything else can
 still be added by ticker on the Peers page.
 
+### What the live adapter will not invent
+
+Where the provider publishes nothing, the app shows `–` rather than a stand-in,
+because these figures render in columns a reader takes as reported fact:
+
+- **Football-field multiple bars.** There are no historical trading bands for a
+  live company, so bars are built from the peer group's actual low–high and
+  labelled `· peers`. A spread around today's multiple would be arithmetic
+  wearing a band's clothes; where no peer or reported range exists, the bar is
+  left out.
+- **Reported multiples and the 52-week range** are passed through or absent —
+  never replaced by a model-derived number or a literal.
+- **The KPI dashboard is annual on live data** (`Trend (8Y)`), and the forecast
+  half of every sparkline is dashed, since only the first four points are
+  reported.
+
+The starting **WACC is derived per company** — CAPM cost of equity from the
+provider's beta, blended with after-tax cost of debt at the company's actual
+capital structure, clamped to the slider's 6–12% range. The risk-free rate
+(4%), equity risk premium (5%) and debt spread (1.5%) are house assumptions;
+terminal growth stays 2.5% as a long-run nominal-GDP proxy. All of them are
+there to be disagreed with on the Expectations page — for a commodity cyclical
+a beta-derived rate tends to sit low.
+
 One wrinkle worth knowing when extending the industry map: the provider mixes
 two taxonomies. IBM reports `INFORMATION TECHNOLOGY SERVICES` (SIC-flavoured)
 while Novo Nordisk reports `DRUG MANUFACTURERS - GENERAL` and Ericsson
