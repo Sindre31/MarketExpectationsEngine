@@ -216,10 +216,12 @@ export default function App() {
   const ebm = em.map(v => +(v - c.daGap).toFixed(1));
   const ebitda = rev.map((r, i) => (r * em[i]) / 100);
   const ebit = rev.map((r, i) => (r * ebm[i]) / 100);
-  const ni = ebit.map(e => e * 0.78);
+  // the mocks carry 22%; a live company carries its own effective rate
+  const taxR = c.defA.tax / 100;
+  const ni = ebit.map(e => e * (1 - taxR));
   const eps = ni.map(n => n / SH);
   const capex = rev.map((r, i) => (r * c.capexP[i]) / 100);
-  const ocf = ebitda.map((e, i) => e - ebit[i] * 0.22 - (i ? 0.02 * (rev[i] - rev[i - 1]) : 300));
+  const ocf = ebitda.map((e, i) => e - ebit[i] * taxR - (i ? 0.02 * (rev[i] - rev[i - 1]) : 300));
   const fcf = ocf.map((o, i) => o - capex[i]);
   const growth = rev.map((r, i) => (i ? (r / rev[i - 1] - 1) * 100 : 11.8));
   const mcapM = PRICE * SH;
@@ -564,7 +566,7 @@ export default function App() {
               <ExpectationsPage {...{ narrow, c, C, tt, a, d, setA, implG, implEm, implFcfM, implRoic, gap, assess, pct, PRICE, myPresets, presets, setPresets, setAOver, rev, fcf25, gapColor: gap > 5 ? 'var(--neg)' : gap < -5 ? 'var(--pos)' : 'var(--est)', barLoV, barHiV }} />
             )}
             {page === 'financials' && (
-              <FinancialsPage {...{ narrow, c, tab, setTab, expanded, setExpanded, rev, gm, em, ebm, ebitda, ebit, ni, eps, capex, ocf, fcf, growth, est, YRS }} />
+              <FinancialsPage {...{ narrow, c, tab, setTab, expanded, setExpanded, rev, gm, em, ebm, ebitda, ebit, ni, eps, capex, ocf, fcf, growth, est, YRS, taxR }} />
             )}
             {page === 'scenarios' && (
               <ScenariosPage {...{ narrow, c, C, tt, scNow, scR, scDefs, setSc, setAOver, setPage, PRICE }} />
@@ -931,7 +933,7 @@ function ExpectationsPage(P: any) {
 // -------------------------------------------------------------- financials
 
 function FinancialsPage(P: any) {
-  const { c, tab, setTab, narrow, expanded, setExpanded, rev, gm, em, ebm, ebitda, ebit, ni, eps, capex, ocf, fcf, growth, est, YRS } = P;
+  const { c, tab, setTab, narrow, expanded, setExpanded, rev, gm, em, ebm, ebitda, ebit, ni, eps, capex, ocf, fcf, growth, est, YRS, taxR } = P;
   const shade = true;
   const hasSegs = c.segs.length > 0;
 
@@ -958,7 +960,7 @@ function FinancialsPage(P: any) {
     row('ebit', 'EBIT', ebit, fM, { bold: 1 }),
     row('ebitm', 'EBIT margin %', ebm, pctF, { sub: 1 }),
     row('fin', 'Net financials', rev.map((_r: number, i: number) => (c.cash[i] - c.debt) * 0.03), fM),
-    row('tax', 'Tax (22%)', ebit.map((e: number) => -e * 0.22), fM),
+    row('tax', `Tax (${c.defA.tax}%)`, ebit.map((e: number) => -e * taxR), fM),
     row('ni', 'Net income', ni, fM, { bold: 1 }),
     row('eps', 'EPS · ' + c.ccy, eps, (v: number) => v.toFixed(2), { bold: 1 }),
   ];
@@ -977,7 +979,7 @@ function FinancialsPage(P: any) {
   const cfRows: FinRowDef[] = [
     row('cebitda', 'EBITDA', ebitda, fM),
     row('wc', 'Change in working capital', rev.map((r: number, i: number) => (i ? -0.02 * (r - rev[i - 1]) : -300)), fM),
-    row('taxp', 'Tax paid', ebit.map((e: number) => -e * 0.22), fM),
+    row('taxp', 'Tax paid', ebit.map((e: number) => -e * taxR), fM),
     row('ocf', 'Operating cash flow', ocf, fM, { bold: 1 }),
     row('cap', 'Capex', capex.map((x: number) => -x), fM),
     row('ccp', 'Capex % of revenue', c.capexP.map((v: number) => -v), (v: number) => v.toFixed(1) + '%', { sub: 1 }),
