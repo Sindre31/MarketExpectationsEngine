@@ -73,6 +73,13 @@ const cardTitle: React.CSSProperties = {
   color: 'var(--mut)',
 };
 
+/**
+ * How many peers to pull automatically when a live company is loaded. Each one
+ * costs a request on top of the six the company itself needs, so this stays
+ * small; the Peers page can always load or add more.
+ */
+const AUTO_PEERS = 5;
+
 /** 8 fiscal-year labels around a company's latest actual year: FY..A ×4 then FY..E ×4 */
 const yrLabels = (fy0: number) =>
   [-3, -2, -1, 0, 1, 2, 3, 4].map(o => 'FY' + String((fy0 + o) % 100).padStart(2, '0') + (o <= 0 ? 'A' : 'E'));
@@ -332,9 +339,12 @@ export default function App() {
     setTip(null);
   };
 
-  /** Fetch a comparison group (one request per name) and cache it. */
-  const loadPeerGroup = async (symbols: string[], replace: boolean) => {
-    const target = c.ticker;
+  /**
+   * Fetch a comparison group (one request per name) and cache it. `target`
+   * is passed explicitly when loading for a company that has just been
+   * fetched, since the selected-company state has not re-rendered yet.
+   */
+  const loadPeerGroup = async (symbols: string[], replace: boolean, target = c.ticker) => {
     const wanted = symbols
       .map(s => s.trim().toUpperCase())
       .filter(s => s && s !== target)
@@ -382,6 +392,11 @@ export default function App() {
       const cached = loadCachedPeers(co.ticker);
       if (cached) setPeerSets(s => ({ ...s, [co.ticker]: cached }));
       pickCompany(co.ticker);
+      // Fill the comparison set in the background — the company is already on
+      // screen, and the peer-median columns light up as the group arrives.
+      if (!cached) {
+        void loadPeerGroup(suggestPeers(co, AUTO_PEERS), true, co.ticker);
+      }
     } catch (e) {
       setLoadErr(e instanceof LiveDataError ? e.message : 'Could not load ' + t + ' — check the symbol and your API key.');
       setSearchOpen(true);
@@ -509,7 +524,11 @@ export default function App() {
             Mkt cap <span style={{ fontFamily: MONO, color: 'var(--ink)' }}>{c.ccy + ' ' + fB(mcapM) + 'bn'}</span>
           </div>
           <div style={{ fontSize: 10.5, color: 'var(--mut)', whiteSpace: 'nowrap' }}>
-            {loadingSym ? 'Loading ' + loadingSym + '…' : 'Updated ' + c.updated + (c.live ? ' · live' : ' · mock')}
+            {loadingSym
+              ? 'Loading ' + loadingSym + '…'
+              : peerBusy
+                ? `Loading peers ${Math.min(peerBusy.done + 1, peerBusy.total)}/${peerBusy.total}…`
+                : 'Updated ' + c.updated + (c.live ? ' · live' : ' · mock')}
           </div>
           <div data-print-hide="1" style={{ marginLeft: narrow ? 0 : 'auto', flex: narrow ? '1 1 100%' : undefined, position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
@@ -1385,7 +1404,7 @@ function ValuationPage(P: any) {
 function PeersPage(P: any) {
   const { c, C, tt, narrow, peerSet, peerRows, peerBusy, peerNote, setPeerNote, loadPeerGroup, removePeer, go } = P;
   const [draft, setDraft] = useState('');
-  const suggested = suggestPeers(c);
+  const suggested = suggestPeers(c, AUTO_PEERS);
   const qLabel = peerSet.qualityLabel as 'ROIC' | 'ROE';
   const editable = !!c.live;
   const mixed = peerRows.some((p: Peer) => p.ccy !== c.ccy);
@@ -1470,14 +1489,14 @@ function PeersPage(P: any) {
 
       {editable && !peerSet.peers.length && !peerBusy && (
         <div style={{ background: 'var(--estBg)', border: '1px solid var(--bor)', borderRadius: 5, padding: '10px 14px', fontSize: 11.5, color: 'var(--est)', marginBottom: 10 }}>
-          {c.ticker} is live data, so the mock Norwegian universe would not be a meaningful comparison — it is left out rather than shown as filler. Load a peer group above and the peer-median columns on Overview and Valuation fill in too.
+          No comparison group for {c.ticker}. Peers load automatically when a company is fetched, so an empty set usually means the daily request quota is spent — or that every name was removed. The mock Norwegian universe is deliberately not used as a stand-in. Load or add names above and the peer-median columns on Overview and Valuation fill in with them.
         </div>
       )}
 
       <div style={{ ...card, overflowX: 'auto', marginBottom: narrow ? 4 : 10 }}>
         <div style={{ minWidth: narrow ? 780 : 960, display: 'grid', gridTemplateColumns: (narrow ? '150px' : '1.6fr') + ' repeat(9,1fr)' }}>
           {peerHead.map(([l, al], i) => (
-            <div key={l} style={{ padding: '9px 12px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--mut)', borderBottom: '1px solid var(--bor2)', textAlign: al, ...(narrow && !i ? peerLabelCell : null) }}>{l}</div>
+            <div key={l} style={{ padding: '9px 12px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--mut)', borderBottom: '1px solid var(--bor2)', textAlign: al, whiteSpace: 'nowrap', ...(narrow && !i ? peerLabelCell : null) }}>{l}</div>
           ))}
           {peerRows.map((p: Peer) => {
             const hl = p.ticker === c.ticker;
@@ -1485,7 +1504,7 @@ function PeersPage(P: any) {
             return (
               <React.Fragment key={p.ticker}>
                 <div style={{ padding: '7px 12px', fontSize: 11.5, borderBottom: '1px solid var(--bor)', background: bg, fontWeight: hl ? 600 : 400, textAlign: 'left', fontFamily: SANS, color: 'var(--ink)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6, ...(narrow ? { ...peerLabelCell, background: hl ? 'var(--accS)' : 'var(--sur)' } : null) }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{narrow ? p.ticker : p.ticker + ' · ' + p.name}</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{narrow ? p.ticker : p.ticker + ' · ' + p.name}</span>
                   {editable && !hl && (
                     <span
                       data-print-hide="1"

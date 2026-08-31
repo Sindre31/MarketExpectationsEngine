@@ -45,19 +45,25 @@ sensitivity, valuation — runs unchanged in the company's reporting currency.
 
 The provider has no "competitors" endpoint, so `src/peers.ts` keeps a universe
 of liquid listed names grouped by what they do and matches it against the
-company's own reported industry — loading IBM suggests ACN, INFY, CTSH, DXC and
-EPAM. On the Peers page you can load that suggestion, add any ticker by hand
+company's own reported industry — loading IBM picks ACN, INFY, CTSH, DXC and
+EPAM.
+
+A group of five loads **automatically** whenever a live company is fetched, in
+the background: the company renders as soon as its own data lands, the header
+shows `Loading peers n/5…`, and the peer-median columns light up as the group
+arrives. On the Peers page you can reload the suggestion, add any ticker by hand
 (the escape hatch for anything the universe misses, including non-US listings),
 or drop a name. Each peer costs exactly **one** request, and a group is cached
-per company for 24h so it is paid for once.
+per company for 24h, so a live company costs 6 requests the first time and 11
+with its peer group — budget accordingly against the free tier's 25/day.
 
 Two honest limits, surfaced in the UI rather than papered over: one `OVERVIEW`
 call exposes **return on equity, not ROIC**, so the column and scatter axis are
 relabelled ROE for live groups; and free cash flow yield is not published per
-company, so that column shows `–` for peers. A live company starts with **no**
-peer group rather than being compared against the fictional Norwegian mock
-universe — until one is loaded, the peer-median columns on Overview and
-Valuation read `–`.
+company, so that column shows `–` for peers. The fictional Norwegian mock
+universe is never used as a stand-in for a live company — if the automatic load
+comes back empty (usually a spent quota), the peer-median columns read `–`
+rather than borrowing mock figures.
 
 ## Screens
 
