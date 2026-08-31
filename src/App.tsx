@@ -281,12 +281,21 @@ export default function App() {
       ? { peers: [], qualityLabel: 'ROE', live: true }
       : MOCK_PEERS;
 
-  /** This company as a comparison row, so it plots alongside its peers. */
-  const selfPeer: Peer = {
+  /**
+   * This company as a comparison row, so it plots alongside its peers.
+   *
+   * Against a live group it must be measured the way the peers are — provider
+   * TTM/quarterly figures — or it lands in a different universe from its own
+   * peer set (the model's annual FY+1 growth against their latest-quarter
+   * growth put Equinor at -5% beside peers at +35..67%). Free cash flow yield
+   * stays the computed one: we genuinely have it here and the peers do not.
+   */
+  const modelledRow: Peer = {
     ticker: c.ticker, name: c.name, mcap: mcapM / 1000, revG: growth[4],
     ebitdaM: em[4], ebitM: ebm[4], quality: c.roic[3], pe, evEbitda: evE, evSales: evS,
     fcfY, ccy: c.ccy, live: c.live,
   };
+  const selfPeer: Peer = peerSet.live && c.mktRow ? { ...c.mktRow, fcfY } : modelledRow;
   const peerRows: Peer[] = peerSet.peers.some(p => p.ticker === c.ticker)
     ? peerSet.peers
     : [selfPeer, ...peerSet.peers];
@@ -690,16 +699,20 @@ function OverviewPage(P: any) {
     const s = (dd >= 0 ? '+' : '−') + Math.abs(dd).toFixed(pp ? 1 : 0) + (pp ? 'pp' : '%');
     return [s, Math.abs(dd) > (pp ? 0.5 : 10) ? 'var(--neg)' : 'var(--est)'];
   };
-  const mkVal = (m: string, cur: number, avg: number, peerV: number | null, fmt: (v: number) => string, pp?: boolean) => {
+  const mkVal = (m: string, cur: number, avg: number, peerV: number | null, fmt: (v: number) => string, pp?: boolean, meaningful = true) => {
+    const peer = peerV == null ? '–' : fmt(peerV);
+    // a ratio built on negative earnings (PEG on a shrinking EPS base) is not a
+    // number worth showing, and the premium against it is noise
+    if (!meaningful) return { m, cur: '–', avg: fmt(avg), peer, prem: '–', premCol: 'var(--mut)' };
     const [s, col] = prem(cur, avg, pp);
-    return { m, cur: fmt(cur), avg: fmt(avg), peer: peerV == null ? '–' : fmt(peerV), prem: s, premCol: col };
+    return { m, cur: fmt(cur), avg: fmt(avg), peer, prem: s, premCol: col };
   };
   const valRows = [
     mkVal('P/E (NTM)', pe, c.hist.pe, medPe, fx1),
     mkVal('EV / EBITDA (NTM)', evE, c.hist.eve, medEve, fx1),
     mkVal('EV / Sales (NTM)', evS, c.hist.evs, medEvs, fx1),
     mkVal('FCF yield', fcfY, c.hist.fcfy, medFcfy, fp1, true),
-    mkVal('PEG (NTM)', peg, c.hist.peg, 1.9, fx1),
+    mkVal('PEG (NTM)', peg, c.hist.peg, 1.9, fx1, false, isFinite(peg) && peg > 0),
   ];
   const g25 = growth[3];
   const ndE = netDebt / ebitda[3];
@@ -753,7 +766,7 @@ function OverviewPage(P: any) {
           <div style={{ ...cardTitle, marginBottom: 10 }}>Valuation vs history &amp; peers</div>
           <div style={narrow ? panX : undefined}>
             <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr 1fr', gap: 0, fontSize: 12, minWidth: narrow ? 400 : undefined }}>
-              {['Metric', 'Current', '5Y avg', 'Peer med.', 'vs hist.'].map((h, i) => (
+              {['Metric', c.live ? 'Model' : 'Current', c.live ? 'Reported' : '5Y avg', 'Peer med.', c.live ? 'vs rep.' : 'vs hist.'].map((h, i) => (
                 <div key={h} style={{ color: 'var(--mut)', fontSize: 10.5, padding: '4px 0', borderBottom: '1px solid var(--bor)', textAlign: i ? 'right' : 'left' }}>{h}</div>
               ))}
               {valRows.map(vr => (
@@ -769,6 +782,7 @@ function OverviewPage(P: any) {
           </div>
           <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 10 }}>
             {'Enterprise value ' + ccy + ' ' + fB(evM) + 'bn · ' + c.valFootTail}
+            {c.live && ' Model multiples come from this app\u2019s own forecast; reported and peer multiples are the provider\u2019s own, so the two are measured differently.'}
           </div>
         </div>
         <div style={{ ...card, padding: '16px 18px', display: 'flex', flexDirection: 'column' }}>
@@ -1363,7 +1377,7 @@ function ValuationPage(P: any) {
           <div style={{ ...cardTitle, marginBottom: 10 }}>{'Trading multiples → implied share price (on ' + fy1 + 'E)'}</div>
           <div style={narrow ? panX : undefined}>
             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr 1fr', fontSize: 12, minWidth: narrow ? 420 : undefined }}>
-              {['Method', 'Current', 'Hist. avg', 'Peer med.', 'Impl. price*'].map((h, i) => (
+              {['Method', c.live ? 'Model' : 'Current', c.live ? 'Reported' : 'Hist. avg', 'Peer med.', 'Impl. price*'].map((h, i) => (
                 <div key={h} style={{ color: 'var(--mut)', fontSize: 10.5, padding: '4px 0', borderBottom: '1px solid var(--bor)', textAlign: i ? 'right' : 'left' }}>{h}</div>
               ))}
               {multRows.map(mr => (

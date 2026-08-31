@@ -77,6 +77,12 @@ export interface Company {
   live?: boolean;
   /** Display string for when the data was last refreshed */
   updated: string;
+  /**
+   * The company measured the same way its peers are (provider TTM/quarterly
+   * figures). Present only for live companies; the peer table uses it so the
+   * company and its peers are directly comparable.
+   */
+  mktRow?: Peer;
 }
 
 export const CO: Record<string, Company> = {

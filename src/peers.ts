@@ -1,5 +1,6 @@
 import type { Company, Peer } from './data';
 import { avQuery } from './live';
+import { peerFromOverview } from './marketRow';
 
 /**
  * Live peer groups.
@@ -176,23 +177,7 @@ const r1 = (v: number) => Math.round(v * 10) / 10;
 export async function fetchPeer(symbol: string, apiKey: string): Promise<Peer> {
   const ov = await avQuery({ function: 'OVERVIEW', symbol }, apiKey);
   if (!ov.Symbol) throw new Error(`No fundamentals for "${symbol}"`);
-  const revTTM = num(ov.RevenueTTM);
-  const ebitda = num(ov.EBITDA);
-  return {
-    ticker: ov.Symbol,
-    name: ov.Name || symbol,
-    mcap: r1(num(ov.MarketCapitalization) / 1e9),
-    revG: r1(num(ov.QuarterlyRevenueGrowthYOY) * 100),
-    ebitdaM: revTTM > 0 ? r1((ebitda / revTTM) * 100) : 0,
-    ebitM: r1(num(ov.OperatingMarginTTM) * 100),
-    quality: r1(num(ov.ReturnOnEquityTTM) * 100),
-    pe: r1(num(ov.ForwardPE) || num(ov.PERatio)),
-    evEbitda: r1(num(ov.EVToEBITDA)),
-    evSales: r1(num(ov.EVToRevenue)),
-    fcfY: null, // not exposed by OVERVIEW; a per-peer cash-flow call would double the cost
-    ccy: ov.Currency || 'USD',
-    live: true,
-  };
+  return peerFromOverview(ov);
 }
 
 /**

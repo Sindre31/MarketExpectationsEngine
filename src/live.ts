@@ -1,4 +1,5 @@
 import type { Assumptions, Company, Kpi } from './data';
+import { peerFromOverview } from './marketRow';
 
 /**
  * Live-data adapter: fetches a real company from the Alpha Vantage REST API
@@ -257,12 +258,16 @@ export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<
     buyBelow: Math.round(price * 0.85),
     segs: [], // segment split is not available from this API
     bull: [
-      `Revenue compounded ${r1(gCagr)}% a year over the last three fiscal years, reaching ${(revA[3] / 1000).toFixed(1)}bn ${ccy}.`,
+      gCagr >= 0
+        ? `Revenue compounded ${r1(gCagr)}% a year over the last three fiscal years, reaching ${(revA[3] / 1000).toFixed(1)}bn ${ccy}.`
+        : `Revenue is ${(revA[3] / 1000).toFixed(1)}bn ${ccy} after falling ${r1(-gCagr)}% a year for three years — a low base to price off if the cycle turns.`,
       `${gmTrendUp ? 'Gross margin expanded' : 'Gross margin held near'} ${gmA[3].toFixed(1)}% while EBITDA margin runs at ${emA[3].toFixed(1)}%.`,
       `Latest-year free cash flow of ${(fcf3 / 1000).toFixed(1)}bn ${ccy} (${fcfM3.toFixed(1)}% margin) funds the ${divRate > 0 ? 'dividend and ' : ''}reinvestment.`,
     ],
     bear: [
-      `The reverse DCF prices in ${r1(clamp(gCagr, -5, 20))}%+ growth — any deceleration from the historical ${r1(gCagr)}% pace pressures the multiple.`,
+      gCagr >= 0
+        ? `The reverse DCF prices in ${r1(clamp(gCagr, -5, 20))}%+ growth — any deceleration from the historical ${r1(gCagr)}% pace pressures the multiple.`
+        : `Revenue has fallen ${r1(-gCagr)}% a year for three years; the estimate years assume that stabilises, which the price has to justify.`,
       `${netDebt > 0 ? `Net debt of ${(netDebt / 1000).toFixed(1)}bn ${ccy} adds leverage to the equity story.` : 'A rich valuation leaves little margin of safety despite the net cash position.'}`,
       `At ${r1(peNow)}x forward earnings the market already assumes continued margin ${emA[3] >= emA[0] ? 'expansion' : 'recovery'}.`,
     ],
@@ -292,9 +297,10 @@ export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<
       mkKpi('FCF margin (modelled)', fcfMSeries, v => v.toFixed(1) + '%'),
       mkKpi('ROIC', roic, v => v.toFixed(1) + '%'),
     ],
-    valFootTail: 'multiples vs history use the provider’s trailing figures.',
+    valFootTail: 'reported multiples are the provider\u2019s own current figures, not a five-year average.',
     ccy,
     fy0,
+    mktRow: peerFromOverview(ov),
     live: true,
     updated: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
   };
