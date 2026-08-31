@@ -59,9 +59,27 @@ export default async function handler(req: any, res: any) {
   try {
     const upstream = await fetch('https://www.alphavantage.co/query?' + params.toString());
     const body = await upstream.text();
+
+    // Alpha Vantage reports rate limits and bad symbols as HTTP 200 with a
+    // notice payload. Caching one of those would serve the error to everyone
+    // until it expired, so notices are passed through uncached.
+    let notice: string | null = null;
+    try {
+      const parsed = JSON.parse(body);
+      notice = parsed['Information'] || parsed['Error Message'] || parsed['Note'] || null;
+    } catch {
+      notice = 'Malformed response from the market-data provider';
+    }
+    if (notice) {
+      res.setHeader('Cache-Control', 'no-store');
+      res.status(/per second|per day|rate limit|premium/i.test(notice) ? 429 : 502).json({ error: notice });
+      return;
+    }
+
     res.setHeader('Cache-Control', `s-maxage=${CACHE[fn] ?? 3600}, stale-while-revalidate=86400`);
     res.status(upstream.ok ? 200 : upstream.status).setHeader('Content-Type', 'application/json').send(body);
   } catch {
+    res.setHeader('Cache-Control', 'no-store');
     res.status(502).json({ error: 'Upstream market-data request failed' });
   }
 }

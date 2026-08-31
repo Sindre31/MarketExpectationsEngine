@@ -27,7 +27,12 @@ const r1 = (v: number) => Math.round(v * 10) / 10;
  * Without one, go through the site's /api/av serverless proxy, which holds a
  * shared key server-side (and answers 503 if none is configured there).
  */
-async function av(params: Record<string, string>, apiKey: string): Promise<any> {
+const pause = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+/** A burst limit we can wait out, as opposed to the daily quota being spent. */
+const isBurstLimit = (msg: string) => /per second|spreading out/i.test(msg) && !/per day/i.test(msg);
+
+async function avOnce(params: Record<string, string>, apiKey: string): Promise<any> {
   const qs = new URLSearchParams(params);
   const url = apiKey ? `${BASE}?${qs}&apikey=${encodeURIComponent(apiKey)}` : `/api/av?${qs}`;
   const res = await fetch(url);
@@ -37,12 +42,25 @@ async function av(params: Record<string, string>, apiKey: string): Promise<any> 
   } catch {
     throw new LiveDataError(`Market-data request failed (HTTP ${res.status})`);
   }
-  if (json['error']) throw new LiveDataError(json['error']); // proxy error
+  if (json['error']) throw new LiveDataError(json['error']); // proxy error / upstream notice
   if (!res.ok) throw new LiveDataError(`Market-data request failed (HTTP ${res.status})`);
   if (json['Error Message']) throw new LiveDataError(json['Error Message']);
   if (json['Information']) throw new LiveDataError(json['Information']); // rate limit / premium notice
   if (json['Note']) throw new LiveDataError(json['Note']);
   return json;
+}
+
+async function av(params: Record<string, string>, apiKey: string): Promise<any> {
+  try {
+    return await avOnce(params, apiKey);
+  } catch (e) {
+    // the provider's per-second burst limit is transient — back off and retry once
+    if (e instanceof LiveDataError && isBurstLimit(e.message)) {
+      await pause(1600);
+      return avOnce(params, apiKey);
+    }
+    throw e;
+  }
 }
 
 export interface SearchHit {
@@ -78,14 +96,13 @@ function last4(reports: any[]): any[] {
   return out;
 }
 
-const pause = (ms: number) => new Promise(r => setTimeout(r, ms));
-
 export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<Company> {
-  // sequential with spacing: Alpha Vantage rejects bursts above ~2 req/s
+  // sequential, spaced just over a second: Alpha Vantage's free tier documents
+  // a limit of one request per second and answers bursts with a notice
   const results: any[] = [];
   const fns = ['OVERVIEW', 'GLOBAL_QUOTE', 'INCOME_STATEMENT', 'BALANCE_SHEET', 'CASH_FLOW', 'TIME_SERIES_MONTHLY_ADJUSTED'];
   for (let i = 0; i < fns.length; i++) {
-    if (i) await pause(550);
+    if (i) await pause(1100);
     results.push(await av({ function: fns[i], symbol }, apiKey));
   }
   const [ov, quoteRes, incRes, balRes, cfRes, tsRes] = results;
