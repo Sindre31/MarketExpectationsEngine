@@ -469,7 +469,7 @@ export default function App() {
     });
   const typed = searchQ.trim().toUpperCase();
   if (typed.length >= 1 && !companies[typed] && !hits.some(h => h.symbol.toUpperCase() === typed)) {
-    const hint = foreignListingHint(typed);
+    const hint = foreignListingHint(typed, '', true);
     searchRows.push({
       t: typed,
       n: hint || 'Load this exact symbol from the API',
