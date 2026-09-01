@@ -167,12 +167,18 @@ const US_LINE_BY_NAME: [RegExp, string][] = [
  * `name` is the company name from a search hit, when there is one — it is what
  * lets an opaque foreign code resolve to its US line.
  */
-export function foreignListingHint(symbol: string, name = ''): string | null {
+export function foreignListingHint(symbol: string, name = '', short = false): string | null {
   const sym = symbol.trim().toUpperCase();
   const m = EXCHANGE_SUFFIX.exec(sym);
   if (!m) return null;
   const venue = VENUE[m[1].toUpperCase()] || 'non-US exchanges';
   const alt = US_LINE[sym] || US_LINE_BY_NAME.find(([re]) => re.test(name))?.[1];
+  // the short form is for a dropdown row, which has one line to say it in
+  if (short) {
+    return alt
+      ? `No filings for ${venue} \u2014 load ${alt} instead`
+      : `No filings for ${venue} \u2014 try its NYSE or NASDAQ line`;
+  }
   const why = `Alpha Vantage publishes no filings for ${venue}, so "${symbol}" cannot be modelled \u2014 a reverse DCF needs an income statement, a balance sheet and a cash-flow statement, and only US listings carry them.`;
   return alt
     ? `${why} Load ${alt} instead \u2014 the same company's US line, reporting the same filings.`

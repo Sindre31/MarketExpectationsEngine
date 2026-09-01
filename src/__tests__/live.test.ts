@@ -209,3 +209,19 @@ describe('foreignListingHint', () => {
     expect(foreignListingHint('BRK-B')).toBeNull();
   });
 });
+
+describe('foreignListingHint · short form', () => {
+  it('fits a dropdown row and still names the US line', () => {
+    const short = foreignListingHint('0M2Z.LON', 'Equinor ASA', true)!;
+    expect(short).toBe('No filings for the London Stock Exchange — load EQNR instead');
+    expect(short.length).toBeLessThan(70);
+  });
+
+  it('points at a US listing generically when none is known', () => {
+    expect(foreignListingHint('MOWI.OL', '', true)).toMatch(/try its NYSE or NASDAQ line/);
+  });
+
+  it('stays null for a US symbol', () => {
+    expect(foreignListingHint('IBM', 'International Business Machines', true)).toBeNull();
+  });
+});

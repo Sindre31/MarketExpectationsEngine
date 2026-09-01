@@ -449,16 +449,19 @@ export default function App() {
         action: sel ? null : () => pickCompany(co.ticker),
       });
     });
-  hits
+  // the provider indexes foreign lines but files nothing behind them, so say
+  // that rather than offering a load that always fails — and sort the loadable
+  // hits first, since a search like "Equinor" returns four dead foreign lines
+  // and would otherwise bury the one US line that works
+  const liveHits = hits
     .filter(h => !companies[h.symbol.toUpperCase()])
+    .map(h => ({ h, hint: foreignListingHint(h.symbol, h.name, true) }));
+  [...liveHits.filter(x => !x.hint), ...liveHits.filter(x => x.hint)]
     .slice(0, 5)
-    .forEach(h => {
-      // the provider indexes foreign lines but files nothing behind them, so
-      // say that here rather than offering a load that always fails
-      const hint = foreignListingHint(h.symbol, h.name);
+    .forEach(({ h, hint }) => {
       searchRows.push({
         t: h.symbol,
-        n: hint || h.name + ' · ' + h.currency,
+        n: hint ? `${h.name} · ${h.currency} · ${hint}` : h.name + ' · ' + h.currency,
         tag: hint ? 'NO FILINGS' : loadingSym === h.symbol.toUpperCase() ? 'LOADING…' : 'LOAD LIVE',
         tagCol: hint ? 'var(--neg)' : 'var(--est)',
         action: hint ? null : () => loadLive(h.symbol),
