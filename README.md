@@ -93,11 +93,16 @@ Some companies have **no line that files at all**, and those get their own
 message rather than a redirect, since there is no ticker to redirect to.
 Nestlé and Roche are the pattern: both are SIX Swiss primaries and the SIX is
 absent from the symbol index entirely (`NESN.SWX` returns an empty body), so
-searching either name turns up only OTC lines (`NSRGY`, `NSRGF`, `NSLYF`;
-`RHHBY`, `RHHBF`, `RHHVF`) and foreign-suffixed ones (`RBO.PAR`, `RHO.FRK`,
-`0QQ6.LON`, `NSTL.TRT`). `NSRGY` and `RHHBY` were probed directly and both
-answer `No data returned`. Telling someone to "try its NYSE or NASDAQ line"
-there would send them after a ticker that does not exist.
+every line is either OTC (`NSRGY`, `NSRGF`; `RHHBY`, `RHHBF`, `RHHVF`) or
+carries an exchange suffix (`RBO.PAR`, `RHO.FRK`, `0QQ6.LON`, `NSTL.TRT`).
+`NSRGY` and `RHHBY` were probed directly and both answer `No data returned`.
+Telling someone to "try its NYSE or NASDAQ line" there would send them after a
+ticker that does not exist.
+
+The match is on the parent's own reported name, not the word in it — a
+`Nestle` search also returns **Nestle India Limited** and **Nestle (Malaysia)
+Bhd**, which are separate listed companies rather than lines of the Swiss
+parent, and are left to be judged on their own.
 
 Reaching Oslo Børs properly means a second provider. Twelve Data does index
 the exchange (EQNR, NHY, MOWI and the rest on XOSL, priced in NOK), but on its

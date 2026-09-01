@@ -169,8 +169,8 @@ const US_LINE: Record<string, string> = {
  * "No data returned" on OVERVIEW.
  */
 const NO_FILING_LINE: [RegExp, string][] = [
-  [/\bnestl[e\u00e9]\b|^NS(RGY|RGF|LYF)$/i, 'Nestl\u00e9'],
-  [/\broche\b|\bhoffmann-la\b|^RH(HBY|HBF|HVF)$/i, 'Roche'],
+  [/^nestl[e\u00e9]\s*(s\.?\s?a\.?|cdr)\b|^NSRG[YF]$/i, 'Nestl\u00e9'],
+  [/^roche\s+holding\b|^RH(HBY|HBF|HVF)$/i, 'Roche'],
 ];
 
 const US_LINE_BY_NAME: [RegExp, string][] = [

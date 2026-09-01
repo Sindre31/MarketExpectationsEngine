@@ -271,3 +271,16 @@ describe('secondaryListingHint · companies with no line that files', () => {
     expect(secondaryListingHint('EQNR', 'Equinor ASA')).toBeNull();
   });
 });
+
+describe('secondaryListingHint · does not swallow same-named companies', () => {
+  it('leaves Nestlé India and Nestlé Malaysia to be judged on their own', () => {
+    // separate listed companies, not lines of the Swiss parent
+    expect(secondaryListingHint('NESTLEIND.BSE', 'Nestle India Limited')).not.toMatch(/under any symbol/);
+    expect(secondaryListingHint('NSLYF', 'Nestle (Malaysia) Bhd')).toBeNull();
+  });
+
+  it('still catches the parent under its own name and CDR', () => {
+    expect(secondaryListingHint('NSRGF', 'Nestle SA')).toMatch(/Nestlé/);
+    expect(secondaryListingHint('NSTL.TRT', 'Nestle CDR (CAD Hedged)')).toMatch(/Nestlé/);
+  });
+});
