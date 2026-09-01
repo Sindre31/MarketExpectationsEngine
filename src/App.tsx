@@ -3,7 +3,7 @@ import { CO, MOCK_PEERS, type Assumptions, type Company, type Peer, type PeerSet
 import { cachePeers, fetchPeerGroup, loadCachedPeers, suggestPeers } from './peers';
 import { dcf, impliedPricePerShare, solve } from './engine';
 import { median, quartiles } from './stats';
-import { LiveDataError, fetchLiveCompany, nordicLocalHint, searchSymbols, type SearchHit } from './live';
+import { LiveDataError, fetchLiveCompany, foreignListingHint, searchSymbols, type SearchHit } from './live';
 import {
   DARK, LIGHT, comboChart, lineChart, rangeChart, scatterChart, sparkline, waterfallChart,
   type Palette, type TipFn, type TipLine,
@@ -453,25 +453,26 @@ export default function App() {
     .filter(h => !companies[h.symbol.toUpperCase()])
     .slice(0, 5)
     .forEach(h => {
+      // the provider indexes foreign lines but files nothing behind them, so
+      // say that here rather than offering a load that always fails
+      const hint = foreignListingHint(h.symbol, h.name);
       searchRows.push({
         t: h.symbol,
-        n: h.name + ' · ' + h.currency,
-        tag: loadingSym === h.symbol.toUpperCase() ? 'LOADING…' : 'LOAD LIVE',
-        tagCol: 'var(--est)',
-        action: () => loadLive(h.symbol),
+        n: hint || h.name + ' · ' + h.currency,
+        tag: hint ? 'NO FILINGS' : loadingSym === h.symbol.toUpperCase() ? 'LOADING…' : 'LOAD LIVE',
+        tagCol: hint ? 'var(--neg)' : 'var(--est)',
+        action: hint ? null : () => loadLive(h.symbol),
       });
     });
   const typed = searchQ.trim().toUpperCase();
   if (typed.length >= 1 && !companies[typed] && !hits.some(h => h.symbol.toUpperCase() === typed)) {
-    // a local Nordic ticker has no fundamentals at the provider, so say that
-    // instead of offering a fetch that always fails
-    const localHint = nordicLocalHint(typed);
+    const hint = foreignListingHint(typed);
     searchRows.push({
       t: typed,
-      n: localHint || 'Load this exact symbol from the API',
-      tag: localHint ? 'NO DATA' : loadingSym === typed ? 'LOADING…' : 'FETCH',
-      tagCol: localHint ? 'var(--neg)' : 'var(--mut)',
-      action: localHint ? null : () => loadLive(typed),
+      n: hint || 'Load this exact symbol from the API',
+      tag: hint ? 'NO FILINGS' : loadingSym === typed ? 'LOADING…' : 'FETCH',
+      tagCol: hint ? 'var(--neg)' : 'var(--mut)',
+      action: hint ? null : () => loadLive(typed),
     });
   }
   if (!apiKey && !searchQ.trim()) {

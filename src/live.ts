@@ -101,18 +101,49 @@ function last4(reports: any[]): any[] {
 }
 
 /**
- * Local Nordic listings (Oslo Børs, Stockholm, Copenhagen, Helsinki).
+ * Non-US listings.
  *
- * Alpha Vantage's symbol index carries no Oslo Børs line at all — searching
- * "Equinor" returns London, Frankfurt, New York and São Paulo but nothing on
- * XOSL — and for the non-US listings it does carry (0M2Z.LON quotes Equinor in
- * NOK) it serves prices only: OVERVIEW, INCOME_STATEMENT and the rest come back
- * empty, so a reverse DCF has nothing to run on. Rather than spend six requests
- * discovering that, a local Nordic ticker is refused up front and pointed at the
- * US line of the same company where one is known to work.
+ * Alpha Vantage's fundamentals are US-listings-only, and it fails in two
+ * different ways depending on the venue. Oslo Børs and the other local Nordic
+ * exchanges are absent from the symbol index entirely — searching "Equinor"
+ * returns London, Frankfurt, New York and São Paulo but nothing on XOSL, and
+ * EQNR.OL answers "No data returned". The foreign lines it does index are
+ * priced but not filed: 0M2Z.LON quotes Equinor in NOK and returns a clean
+ * GLOBAL_QUOTE and a full monthly history, while its OVERVIEW,
+ * INCOME_STATEMENT, BALANCE_SHEET and CASH_FLOW are all empty.
+ *
+ * Either way a reverse DCF has nothing to run on, so a suffixed symbol is
+ * refused up front — with the reason, and with the US line of the same company
+ * where one is known to work, rather than the provider's bare "No data
+ * returned".
  */
-const NORDIC_SUFFIX = /\.(OL|ST|CO|HE|IC)$/i;
+const EXCHANGE_SUFFIX = /\.([A-Za-z]{2,4})$/;
 
+/** Venue names for the suffixes a user is most likely to reach for. */
+const VENUE: Record<string, string> = {
+  OL: 'Oslo B\u00f8rs', ST: 'Nasdaq Stockholm', CO: 'Nasdaq Copenhagen',
+  HE: 'Nasdaq Helsinki', IC: 'Nasdaq Iceland',
+  LON: 'the London Stock Exchange', L: 'the London Stock Exchange',
+  FRK: 'the Frankfurt exchange', DEX: 'the Xetra exchange',
+  PAR: 'Euronext Paris', AMS: 'Euronext Amsterdam', BRU: 'Euronext Brussels',
+  LIS: 'Euronext Lisbon', MIL: 'Borsa Italiana', MAD: 'the Madrid exchange',
+  SWX: 'the SIX Swiss Exchange', VIE: 'the Vienna exchange',
+  SAO: 'the S\u00e3o Paulo exchange', MEX: 'the Mexican exchange',
+  TRT: 'the Toronto Stock Exchange', TRV: 'the TSX Venture exchange',
+  BSE: 'the Bombay Stock Exchange', NSE: 'the National Stock Exchange of India',
+  SHH: 'the Shanghai exchange', SHZ: 'the Shenzhen exchange',
+  HKG: 'the Hong Kong exchange', TYO: 'the Tokyo exchange',
+  AX: 'the Australian Securities Exchange', NZ: 'the New Zealand exchange',
+  JSE: 'the Johannesburg exchange', TAE: 'the Tel Aviv exchange',
+};
+
+/**
+ * The US line of a company reachable under a foreign symbol, keyed both by
+ * that symbol and by the reported company name — a search hit gives the name,
+ * so 0M2Z.LON ("Equinor ASA") resolves the same way EQNR.OL does. Only the
+ * seven Nordic tickers verified to return fundamentals are listed; an ADR that
+ * comes back empty is no more useful than the foreign line it replaces.
+ */
 const US_LINE: Record<string, string> = {
   'EQNR.OL': 'EQNR', 'FRO.OL': 'FRO',
   'NOVO-B.CO': 'NVO', 'NOVOB.CO': 'NVO', 'GMAB.CO': 'GMAB',
@@ -120,21 +151,38 @@ const US_LINE: Record<string, string> = {
   'NOKIA.HE': 'NOK',
 };
 
-/** A message for a local Nordic ticker, or null if the symbol is not one. */
-export function nordicLocalHint(symbol: string): string | null {
+const US_LINE_BY_NAME: [RegExp, string][] = [
+  [/\bequinor\b/i, 'EQNR'],
+  [/\bnovo\s*nordisk\b/i, 'NVO'],
+  [/\bgenmab\b/i, 'GMAB'],
+  [/\bericsson\b/i, 'ERIC'],
+  [/\bnokia\b/i, 'NOK'],
+  [/\bautoliv\b/i, 'ALV'],
+  [/\bfrontline\b/i, 'FRO'],
+];
+
+/**
+ * A message for a non-US listing, or null if the symbol is a US one.
+ *
+ * `name` is the company name from a search hit, when there is one — it is what
+ * lets an opaque foreign code resolve to its US line.
+ */
+export function foreignListingHint(symbol: string, name = ''): string | null {
   const sym = symbol.trim().toUpperCase();
-  if (!NORDIC_SUFFIX.test(sym)) return null;
-  const alt = US_LINE[sym];
-  const where = sym.endsWith('.OL') ? 'Oslo B\u00f8rs' : 'this local Nordic exchange';
+  const m = EXCHANGE_SUFFIX.exec(sym);
+  if (!m) return null;
+  const venue = VENUE[m[1].toUpperCase()] || 'non-US exchanges';
+  const alt = US_LINE[sym] || US_LINE_BY_NAME.find(([re]) => re.test(name))?.[1];
+  const why = `Alpha Vantage publishes no filings for ${venue}, so "${symbol}" cannot be modelled \u2014 a reverse DCF needs an income statement, a balance sheet and a cash-flow statement, and only US listings carry them.`;
   return alt
-    ? `Alpha Vantage publishes no fundamentals for ${where}, so "${symbol}" cannot be modelled. Load ${alt} instead \u2014 the same company's US line, reporting the same filings.`
-    : `Alpha Vantage publishes no fundamentals for ${where}, so "${symbol}" cannot be modelled. If the company has a NYSE or NASDAQ listing, load that ticker instead.`;
+    ? `${why} Load ${alt} instead \u2014 the same company's US line, reporting the same filings.`
+    : `${why} If the company has a NYSE or NASDAQ listing, load that ticker instead.`;
 }
 
 export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<Company> {
   // sequential, spaced just over a second: Alpha Vantage's free tier documents
   // a limit of one request per second and answers bursts with a notice
-  const hint = nordicLocalHint(symbol);
+  const hint = foreignListingHint(symbol);
   if (hint) throw new LiveDataError(hint);
   const results: any[] = [];
   const fns = ['OVERVIEW', 'GLOBAL_QUOTE', 'INCOME_STATEMENT', 'BALANCE_SHEET', 'CASH_FLOW', 'TIME_SERIES_MONTHLY_ADJUSTED'];

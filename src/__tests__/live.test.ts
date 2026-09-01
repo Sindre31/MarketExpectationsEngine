@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { fetchLiveCompany, LiveDataError, nordicLocalHint } from '../live';
+import { fetchLiveCompany, LiveDataError, foreignListingHint } from '../live';
 
 /** Four fiscal years of a plainly profitable company, oldest last (API order). */
 const years = ['2022-12-31', '2023-12-31', '2024-12-31', '2025-12-31'].reverse();
@@ -177,20 +177,35 @@ describe('effective tax rate', () => {
   });
 });
 
-describe('nordicLocalHint', () => {
+describe('foreignListingHint', () => {
   it('names the US line for a local Nordic ticker that has one', () => {
-    expect(nordicLocalHint('EQNR.OL')).toMatch(/Load EQNR instead/);
-    expect(nordicLocalHint('novo-b.co')).toMatch(/Load NVO instead/);
+    expect(foreignListingHint('EQNR.OL')).toMatch(/Load EQNR instead/);
+    expect(foreignListingHint('novo-b.co')).toMatch(/Load NVO instead/);
   });
 
-  it('mentions Oslo Børs by name for an .OL symbol', () => {
-    expect(nordicLocalHint('MOWI.OL')).toMatch(/Oslo Børs/);
-    expect(nordicLocalHint('MOWI.OL')).toMatch(/NYSE or NASDAQ/);
+  it('resolves a foreign line to its US ticker by company name', () => {
+    // 0M2Z.LON is Equinor quoted in NOK: priced, but no filings behind it
+    expect(foreignListingHint('0M2Z.LON', 'Equinor ASA')).toMatch(/Load EQNR instead/);
+    expect(foreignListingHint('ERCB.FRK', 'Telefonaktiebolaget LM Ericsson')).toMatch(/Load ERIC instead/);
   });
 
-  it('is null for a symbol the provider actually covers', () => {
-    expect(nordicLocalHint('EQNR')).toBeNull();
-    expect(nordicLocalHint('IBM')).toBeNull();
-    expect(nordicLocalHint('0M2Z.LON')).toBeNull();
+  it('names the venue it recognises', () => {
+    expect(foreignListingHint('MOWI.OL')).toMatch(/Oslo Børs/);
+    expect(foreignListingHint('0M2Z.LON')).toMatch(/London Stock Exchange/);
+    expect(foreignListingHint('E1QN34.SAO')).toMatch(/São Paulo/);
+  });
+
+  it('falls back to a generic venue for a suffix it does not know', () => {
+    expect(foreignListingHint('ABC.ZZZZ')).toMatch(/non-US exchanges/);
+  });
+
+  it('offers a US listing when no specific one is known', () => {
+    expect(foreignListingHint('MOWI.OL')).toMatch(/NYSE or NASDAQ/);
+  });
+
+  it('is null for a US symbol', () => {
+    expect(foreignListingHint('EQNR')).toBeNull();
+    expect(foreignListingHint('IBM')).toBeNull();
+    expect(foreignListingHint('BRK-B')).toBeNull();
   });
 });

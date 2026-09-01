@@ -74,10 +74,13 @@ For the non-US listings it does carry, it serves **prices only**: `0M2Z.LON`
 quotes Equinor in NOK and returns a clean `GLOBAL_QUOTE`, but its `OVERVIEW`
 is empty, and a reverse DCF has nothing to run on without filings.
 
-So a local Nordic ticker (`.OL`, `.ST`, `.CO`, `.HE`, `.IC`) is refused up
-front rather than after six wasted requests, and the search dropdown says so
-and names the US line of the same company where one is known to work — typing
-`EQNR.OL` offers `EQNR`, `NOVO-B.CO` offers `NVO`.
+The same holds for every foreign venue, so **any suffixed symbol** is refused
+up front with the reason rather than the provider's bare `No data returned` —
+in the search dropdown as a `NO FILINGS` row, and in the adapter before a
+request is spent. Where the US line of the same company is known to work it is
+named: `EQNR.OL` and `0M2Z.LON` both offer `EQNR`, `NOVO-B.CO` offers `NVO`.
+A search hit resolves by company name, which is what lets an opaque code like
+`0M2Z.LON` find its way to `EQNR`.
 
 Reaching Oslo Børs properly means a second provider. Twelve Data does index
 the exchange (EQNR, NHY, MOWI and the rest on XOSL, priced in NOK), but on its
