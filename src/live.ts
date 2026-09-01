@@ -156,6 +156,23 @@ const US_LINE: Record<string, string> = {
   'NOKIA.HE': 'NOK',
 };
 
+/**
+ * Companies with no line the provider files for at all, so there is nothing to
+ * redirect to — saying "try its NYSE or NASDAQ line" would send someone after
+ * a ticker that does not exist.
+ *
+ * Nestlé and Roche are the pattern: both are SIX Swiss primaries, and the SIX
+ * is absent from the symbol index entirely (NESN.SWX returns an empty body).
+ * Searching either name returns only OTC lines (NSRGY, NSRGF, NSLYF; RHHBY,
+ * RHHBF, RHHVF) and foreign-suffixed ones (RBO.PAR, RHO.FRK, 0QQ6.LON,
+ * NESTLEIND.BSE, NSTL.TRT). NSRGY and RHHBY were probed directly: both answer
+ * "No data returned" on OVERVIEW.
+ */
+const NO_FILING_LINE: [RegExp, string][] = [
+  [/\bnestl[e\u00e9]\b|^NS(RGY|RGF|LYF)$/i, 'Nestl\u00e9'],
+  [/\broche\b|\bhoffmann-la\b|^RH(HBY|HBF|HVF)$/i, 'Roche'],
+];
+
 const US_LINE_BY_NAME: [RegExp, string][] = [
   [/\bequinor\b/i, 'EQNR'],
   [/\bnovo\s*nordisk\b/i, 'NVO'],
@@ -177,7 +194,17 @@ const US_LINE_BY_NAME: [RegExp, string][] = [
 export function secondaryListingHint(symbol: string, name = '', short = false): string | null {
   const sym = symbol.trim().toUpperCase();
   const alt = US_LINE[sym] || US_LINE_BY_NAME.find(([re]) => re.test(name))?.[1];
+  const dead = NO_FILING_LINE.find(([re]) => re.test(sym) || (name && re.test(name)))?.[1];
   const m = EXCHANGE_SUFFIX.exec(sym);
+
+  // a company with nothing to redirect to is its own case: every line is dead,
+  // so neither a ticker nor "try its US listing" would be true
+  if (dead) {
+    return short
+      ? `${dead} files nothing here under any symbol`
+      : `Alpha Vantage files nothing for ${dead} under any symbol \u2014 its US lines are OTC, quoted but carrying no income statement, balance sheet or cash-flow statement, and it has no NYSE or NASDAQ listing behind them. ${dead} cannot be modelled here.`;
+  }
+
   if (!m) {
     // no suffix: only the company name can tell a secondary US line from the
     // primary one, and the primary is the ticker we already know files

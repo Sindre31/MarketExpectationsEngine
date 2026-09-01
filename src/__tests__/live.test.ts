@@ -243,3 +243,31 @@ describe('secondaryListingHint · short form', () => {
     expect(secondaryListingHint('IBM', 'International Business Machines', true)).toBeNull();
   });
 });
+
+describe('secondaryListingHint · companies with no line that files', () => {
+  it('refuses the Nestlé and Roche OTC lines without inventing a redirect', () => {
+    const n = secondaryListingHint('NSRGY', 'Nestle S.A.')!;
+    expect(n).toMatch(/Nestlé cannot be modelled here/);
+    expect(n).not.toMatch(/Load [A-Z]+ instead/);
+    expect(secondaryListingHint('RHHBY', 'Roche Holding AG')).toMatch(/Roche cannot be modelled here/);
+  });
+
+  it('covers their other OTC tickers and foreign lines', () => {
+    expect(secondaryListingHint('NSRGF')).toMatch(/Nestlé/);
+    expect(secondaryListingHint('RHHVF')).toMatch(/Roche/);
+    expect(secondaryListingHint('RBO.PAR', 'Roche Holding AG')).toMatch(/Roche/);
+    // and never falls through to "try its NYSE or NASDAQ line", which would
+    // send someone after a ticker that does not exist
+    expect(secondaryListingHint('RBO.PAR', 'Roche Holding AG')).not.toMatch(/try its NYSE or NASDAQ line/);
+    expect(secondaryListingHint('0QQ6.LON', 'Roche Holding AG', true)).toBe('Roche files nothing here under any symbol');
+  });
+
+  it('has a short form that fits a dropdown row', () => {
+    expect(secondaryListingHint('NSRGY', 'Nestle S.A.', true)).toBe('Nestlé files nothing here under any symbol');
+  });
+
+  it('leaves unrelated companies alone', () => {
+    expect(secondaryListingHint('IBM', 'International Business Machines')).toBeNull();
+    expect(secondaryListingHint('EQNR', 'Equinor ASA')).toBeNull();
+  });
+});
