@@ -100,9 +100,42 @@ function last4(reports: any[]): any[] {
   return out;
 }
 
+/**
+ * Local Nordic listings (Oslo Børs, Stockholm, Copenhagen, Helsinki).
+ *
+ * Alpha Vantage's symbol index carries no Oslo Børs line at all — searching
+ * "Equinor" returns London, Frankfurt, New York and São Paulo but nothing on
+ * XOSL — and for the non-US listings it does carry (0M2Z.LON quotes Equinor in
+ * NOK) it serves prices only: OVERVIEW, INCOME_STATEMENT and the rest come back
+ * empty, so a reverse DCF has nothing to run on. Rather than spend six requests
+ * discovering that, a local Nordic ticker is refused up front and pointed at the
+ * US line of the same company where one is known to work.
+ */
+const NORDIC_SUFFIX = /\.(OL|ST|CO|HE|IC)$/i;
+
+const US_LINE: Record<string, string> = {
+  'EQNR.OL': 'EQNR', 'FRO.OL': 'FRO',
+  'NOVO-B.CO': 'NVO', 'NOVOB.CO': 'NVO', 'GMAB.CO': 'GMAB',
+  'ERIC-B.ST': 'ERIC', 'ERICB.ST': 'ERIC', 'ALIV-SDB.ST': 'ALV',
+  'NOKIA.HE': 'NOK',
+};
+
+/** A message for a local Nordic ticker, or null if the symbol is not one. */
+export function nordicLocalHint(symbol: string): string | null {
+  const sym = symbol.trim().toUpperCase();
+  if (!NORDIC_SUFFIX.test(sym)) return null;
+  const alt = US_LINE[sym];
+  const where = sym.endsWith('.OL') ? 'Oslo B\u00f8rs' : 'this local Nordic exchange';
+  return alt
+    ? `Alpha Vantage publishes no fundamentals for ${where}, so "${symbol}" cannot be modelled. Load ${alt} instead \u2014 the same company's US line, reporting the same filings.`
+    : `Alpha Vantage publishes no fundamentals for ${where}, so "${symbol}" cannot be modelled. If the company has a NYSE or NASDAQ listing, load that ticker instead.`;
+}
+
 export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<Company> {
   // sequential, spaced just over a second: Alpha Vantage's free tier documents
   // a limit of one request per second and answers bursts with a notice
+  const hint = nordicLocalHint(symbol);
+  if (hint) throw new LiveDataError(hint);
   const results: any[] = [];
   const fns = ['OVERVIEW', 'GLOBAL_QUOTE', 'INCOME_STATEMENT', 'BALANCE_SHEET', 'CASH_FLOW', 'TIME_SERIES_MONTHLY_ADJUSTED'];
   for (let i = 0; i < fns.length; i++) {

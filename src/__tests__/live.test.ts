@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { fetchLiveCompany, LiveDataError } from '../live';
+import { fetchLiveCompany, LiveDataError, nordicLocalHint } from '../live';
 
 /** Four fiscal years of a plainly profitable company, oldest last (API order). */
 const years = ['2022-12-31', '2023-12-31', '2024-12-31', '2025-12-31'].reverse();
@@ -174,5 +174,23 @@ describe('effective tax rate', () => {
     const c = await fetchLiveCompany('TEST', 'k');
     expect(c.defA.tax).toBe(22);
     expect(c.notes?.join(' ')).toMatch(/22% assumption/);
+  });
+});
+
+describe('nordicLocalHint', () => {
+  it('names the US line for a local Nordic ticker that has one', () => {
+    expect(nordicLocalHint('EQNR.OL')).toMatch(/Load EQNR instead/);
+    expect(nordicLocalHint('novo-b.co')).toMatch(/Load NVO instead/);
+  });
+
+  it('mentions Oslo Børs by name for an .OL symbol', () => {
+    expect(nordicLocalHint('MOWI.OL')).toMatch(/Oslo Børs/);
+    expect(nordicLocalHint('MOWI.OL')).toMatch(/NYSE or NASDAQ/);
+  });
+
+  it('is null for a symbol the provider actually covers', () => {
+    expect(nordicLocalHint('EQNR')).toBeNull();
+    expect(nordicLocalHint('IBM')).toBeNull();
+    expect(nordicLocalHint('0M2Z.LON')).toBeNull();
   });
 });

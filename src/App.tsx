@@ -3,7 +3,7 @@ import { CO, MOCK_PEERS, type Assumptions, type Company, type Peer, type PeerSet
 import { cachePeers, fetchPeerGroup, loadCachedPeers, suggestPeers } from './peers';
 import { dcf, impliedPricePerShare, solve } from './engine';
 import { median, quartiles } from './stats';
-import { LiveDataError, fetchLiveCompany, searchSymbols, type SearchHit } from './live';
+import { LiveDataError, fetchLiveCompany, nordicLocalHint, searchSymbols, type SearchHit } from './live';
 import {
   DARK, LIGHT, comboChart, lineChart, rangeChart, scatterChart, sparkline, waterfallChart,
   type Palette, type TipFn, type TipLine,
@@ -463,12 +463,15 @@ export default function App() {
     });
   const typed = searchQ.trim().toUpperCase();
   if (typed.length >= 1 && !companies[typed] && !hits.some(h => h.symbol.toUpperCase() === typed)) {
+    // a local Nordic ticker has no fundamentals at the provider, so say that
+    // instead of offering a fetch that always fails
+    const localHint = nordicLocalHint(typed);
     searchRows.push({
       t: typed,
-      n: 'Load this exact symbol from the API',
-      tag: loadingSym === typed ? 'LOADING…' : 'FETCH',
-      tagCol: 'var(--mut)',
-      action: () => loadLive(typed),
+      n: localHint || 'Load this exact symbol from the API',
+      tag: localHint ? 'NO DATA' : loadingSym === typed ? 'LOADING…' : 'FETCH',
+      tagCol: localHint ? 'var(--neg)' : 'var(--mut)',
+      action: localHint ? null : () => loadLive(typed),
     });
   }
   if (!apiKey && !searchQ.trim()) {

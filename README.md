@@ -64,6 +64,28 @@ those are the only ones with fundamentals: local tickers (`EQNR.OL`,
 verified set is EQNR, NVO, ERIC, NOK, ALV, FRO and GMAB. Anything else can
 still be added by ticker on the Peers page.
 
+#### Oslo Børs
+
+There is no Oslo Børs line to load. Alpha Vantage's symbol index does not
+contain one: searching *Equinor* returns London (`0A7F.LON`, `0M2Z.LON`),
+Frankfurt (`DNQ.FRK`, `DNQA.FRK`), New York (`EQNR`) and São Paulo
+(`E1QN34.SAO`) — nothing on XOSL — and `EQNR.OL` answers `No data returned`.
+For the non-US listings it does carry, it serves **prices only**: `0M2Z.LON`
+quotes Equinor in NOK and returns a clean `GLOBAL_QUOTE`, but its `OVERVIEW`
+is empty, and a reverse DCF has nothing to run on without filings.
+
+So a local Nordic ticker (`.OL`, `.ST`, `.CO`, `.HE`, `.IC`) is refused up
+front rather than after six wasted requests, and the search dropdown says so
+and names the US line of the same company where one is known to work — typing
+`EQNR.OL` offers `EQNR`, `NOVO-B.CO` offers `NVO`.
+
+Reaching Oslo Børs properly means a second provider. Twelve Data does index
+the exchange (EQNR, NHY, MOWI and the rest on XOSL, priced in NOK), but on its
+free tier XOSL quotes and the fundamentals for Oslo-only names are both
+paid-plan endpoints, and where free data did come back the annual rows mixed
+USD and NOK in one statement. That is a provider swap and a paid key, not a
+config change.
+
 One wrinkle worth knowing when extending the industry map: the provider mixes
 two taxonomies. IBM reports `INFORMATION TECHNOLOGY SERVICES` (SIC-flavoured)
 while Novo Nordisk reports `DRUG MANUFACTURERS - GENERAL` and Ericsson
