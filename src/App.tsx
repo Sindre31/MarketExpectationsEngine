@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CO, MOCK_PEERS, type Assumptions, type Company, type Peer, type PeerSet, type ScenarioId } from './data';
 import { cachePeers, fetchPeerGroup, loadCachedPeers, suggestPeers } from './peers';
-import { dcf, solve } from './engine';
+import { dcf, impliedPricePerShare, solve } from './engine';
 import { LiveDataError, fetchLiveCompany, searchSymbols, type SearchHit } from './live';
 import {
   DARK, LIGHT, comboChart, lineChart, rangeChart, scatterChart, sparkline, waterfallChart,
@@ -320,7 +320,7 @@ export default function App() {
   const medEve = med(p => p.evEbitda);
   const medEvs = med(p => p.evSales);
   const medFcfy = med(p => p.fcfY);
-  const evps = (m: number, b: number) => (m * b - netDebt) / SH;
+  const evps = (m: number, b: number) => impliedPricePerShare(m, b, netDebt, SH);
 
   // scenarios
   const scDefs: [ScenarioId, string, string][] = [
@@ -1367,8 +1367,13 @@ function ValuationPage(P: any) {
     label: string, band: [number, number] | null, range: [number, number] | null,
     toPrice: (m: number) => number,
   ) => {
-    if (band) return { label: `${label} ${band[0]}–${band[1]}x`, lo: toPrice(band[0]), hi: toPrice(band[1]), c: C.bar };
-    if (range) return { label: `${label} ${range[0]}–${range[1]}x · peers`, lo: toPrice(range[0]), hi: toPrice(range[1]), c: C.bar };
+    const bar = (src: [number, number], suffix: string) => {
+      const lo = toPrice(src[0]);
+      const hi = toPrice(src[1]);
+      return hi > 0 ? { label: `${label} ${src[0]}–${src[1]}x${suffix}`, lo, hi, c: C.bar } : null;
+    };
+    if (band) return bar(band, '');
+    if (range) return bar(range, ' · peers');
     return null;
   };
   field.push(

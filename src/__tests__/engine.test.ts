@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dcf, solve } from '../engine';
+import { dcf, impliedPricePerShare, solve } from '../engine';
 import { CO } from '../data';
 import type { Assumptions } from '../data';
 
@@ -62,5 +62,21 @@ describe('solve', () => {
     const found = solve(g => dcf(c, { ...base, g }).ps, 0, 40, 1e12);
     expect(found).toBeGreaterThanOrEqual(0);
     expect(found).toBeLessThanOrEqual(40);
+  });
+});
+
+describe('impliedPricePerShare', () => {
+  it('values equity as enterprise value less net debt, per share', () => {
+    expect(impliedPricePerShare(10, 20, 50, 2)).toBeCloseTo(75, 6);   // (200-50)/2
+  });
+
+  it('floors at zero instead of returning a negative share price', () => {
+    // IBM: 0.3x EV/Sales on ~70bn revenue against ~53bn net debt once plotted at -34
+    expect(impliedPricePerShare(0.3, 70, 52.7, 0.942)).toBe(0);
+    expect(impliedPricePerShare(2.1, 18.3, 52.7, 0.942)).toBe(0);
+  });
+
+  it('stays finite with no share count', () => {
+    expect(impliedPricePerShare(10, 20, 5, 0)).toBe(0);
   });
 });

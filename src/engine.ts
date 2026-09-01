@@ -74,3 +74,16 @@ export function solve(fn: (x: number) => number, lo: number, hi: number, target:
   }
   return (lo + hi) / 2;
 }
+
+/**
+ * Share price implied by an enterprise-value multiple.
+ *
+ * Floored at zero: enterprise value less net debt can go negative for a
+ * leveraged company at a low multiple, but limited liability means equity is
+ * never worth less than nothing — and a negative share price on a football
+ * field is just noise. IBM at a peer-low 0.3x EV/Sales lands here.
+ */
+export function impliedPricePerShare(multiple: number, metric: number, netDebt: number, shares: number): number {
+  if (!(shares > 0)) return 0;
+  return Math.max(0, (multiple * metric - netDebt) / shares);
+}
