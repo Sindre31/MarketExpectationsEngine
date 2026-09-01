@@ -146,11 +146,33 @@ describe('effective tax rate', () => {
     expect((await fetchLiveCompany('TEST', 'k')).defA.tax).toBeCloseTo(20, 0);
   });
 
-  it('rejects arithmetic nonsense rather than a merely unusual rate', async () => {
-    // a tax charge against a negative pre-tax figure yields a negative ratio
-    stubApi({ INCOME_STATEMENT: { annualReports: income({ incomeBeforeTax: B(-10), incomeTaxExpense: B(3) }) } });
+  it('ignores tax-benefit years rather than averaging them into the forward rate', async () => {
+    // IBM books a net benefit in three years of four; averaging those in gives
+    // ~3%, which is no more sustainable than a 30% cap was for Equinor
+    const reports = income();
+    reports[0] = { ...reports[0], incomeBeforeTax: B(10), incomeTaxExpense: B(-0.2) };
+    reports[1] = { ...reports[1], incomeBeforeTax: B(6), incomeTaxExpense: B(-0.2) };
+    reports[2] = { ...reports[2], incomeBeforeTax: B(9), incomeTaxExpense: B(1.2) };  // the one taxpaying year
+    reports[3] = { ...reports[3], incomeBeforeTax: B(1), incomeTaxExpense: B(-0.6) };
+    stubApi({ INCOME_STATEMENT: { annualReports: reports } });
     const c = await fetchLiveCompany('TEST', 'k');
-    expect(c.defA.tax).toBeGreaterThanOrEqual(0);
-    expect(c.defA.tax).toBeLessThanOrEqual(85);
+    expect(c.defA.tax).toBeCloseTo(13.3, 0);
+    expect(c.notes?.join(' ')).toMatch(/1 of 4 years/);
+  });
+
+  it('excludes loss years, whose rate says nothing about tax on future profits', async () => {
+    const reports = income();
+    reports[0] = { ...reports[0], incomeBeforeTax: B(-10), incomeTaxExpense: B(3) };
+    stubApi({ INCOME_STATEMENT: { annualReports: reports } });
+    const c = await fetchLiveCompany('TEST', 'k');
+    expect(c.defA.tax).toBeGreaterThan(0);
+    expect(c.notes?.join(' ')).toMatch(/3 of 4 years/);
+  });
+
+  it('discloses the assumption when no year qualifies at all', async () => {
+    stubApi({ INCOME_STATEMENT: { annualReports: income({ incomeBeforeTax: B(-5), incomeTaxExpense: B(-1) }) } });
+    const c = await fetchLiveCompany('TEST', 'k');
+    expect(c.defA.tax).toBe(22);
+    expect(c.notes?.join(' ')).toMatch(/22% assumption/);
   });
 });

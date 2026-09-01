@@ -173,14 +173,26 @@ export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<
   // more than double its actual after-tax cash flow. The bounds now only reject
   // arithmetic nonsense (a tax charge against a near-zero or negative pre-tax
   // figure), not unusual-but-real regimes.
-  const taxKnown = inc
-    .map(r => num(r.incomeTaxExpense, NaN) / num(r.incomeBeforeTax, NaN))
-    .filter(t => isFinite(t))
-    .map(t => clamp(t, 0, 0.85));
-  const taxDerived = taxKnown.length > 0;
-  const taxMean = taxDerived ? taxKnown.reduce((a, b) => a + b, 0) / taxKnown.length : 0.22;
+  // The forward cash tax rate is averaged only over years that actually paid
+  // tax on a profit. Two real cases forced this: Norway taxes offshore
+  // petroleum at ~78%, so a 30% ceiling handed Equinor double its true
+  // after-tax cash flow; while IBM books a net tax *benefit* in three years of
+  // four, and averaging those in gives ~3%, no more a sustainable forward rate
+  // than 30% was for Equinor. A loss year or a benefit year says nothing about
+  // the rate on future profits, so it is excluded rather than averaged in or
+  // clamped into range.
+  const taxYears = inc
+    .map(r => ({ pre: num(r.incomeBeforeTax, NaN), tax: num(r.incomeTaxExpense, NaN) }))
+    .filter(({ pre, tax }) => isFinite(pre) && isFinite(tax) && pre > 0 && tax > 0)
+    .map(({ pre, tax }) => clamp(tax / pre, 0, 0.85));
+  const taxDerived = taxYears.length > 0;
+  const taxMean = taxDerived ? taxYears.reduce((a, b) => a + b, 0) / taxYears.length : 0.22;
   const taxPct = r1(clamp(taxMean * 100, 0, 85));
-  if (!taxDerived) notes.push('No year reports a usable tax charge; the model starts from a 22% assumption you can change in Expectations.');
+  if (!taxDerived) {
+    notes.push('No year reports tax paid on a pre-tax profit, so the model starts from a 22% assumption you can change in Expectations.');
+  } else if (taxYears.length < inc.length) {
+    notes.push(`Tax rate is averaged over the ${taxYears.length} of ${inc.length} years that paid tax on a profit; years with a loss or a net tax benefit are excluded as they are not a forward-looking rate.`);
+  }
   const taxRates = inc.map(() => taxMean);
 
   const capexA = cf.map((r, i) => r1(clamp((Math.abs(num(r.capitalExpenditures, 0)) / M / revA[i]) * 100, 0.5, 25)));
