@@ -434,6 +434,8 @@ export default function App() {
     tag: string;
     tagCol: string;
     action: (() => void) | null;
+    /** A second, wrapping line — the reason a row cannot be loaded. */
+    sub?: string;
   }
   const searchRows: SearchRow[] = [];
   Object.values(companies)
@@ -461,7 +463,8 @@ export default function App() {
     .forEach(({ h, hint }) => {
       searchRows.push({
         t: h.symbol,
-        n: hint ? `${h.name} · ${h.currency} · ${hint}` : h.name + ' · ' + h.currency,
+        n: h.name + ' · ' + h.currency,
+        sub: hint || undefined,
         tag: hint ? 'NO FILINGS' : loadingSym === h.symbol.toUpperCase() ? 'LOADING…' : 'LOAD LIVE',
         tagCol: hint ? 'var(--neg)' : 'var(--est)',
         action: hint ? null : () => loadLive(h.symbol),
@@ -472,7 +475,8 @@ export default function App() {
     const hint = foreignListingHint(typed, '', true);
     searchRows.push({
       t: typed,
-      n: hint || 'Load this exact symbol from the API',
+      n: hint ? 'Not modellable from this listing' : 'Load this exact symbol from the API',
+      sub: hint || undefined,
       tag: hint ? 'NO FILINGS' : loadingSym === typed ? 'LOADING…' : 'FETCH',
       tagCol: hint ? 'var(--neg)' : 'var(--mut)',
       action: hint ? null : () => loadLive(typed),
@@ -586,9 +590,12 @@ export default function App() {
                     }}
                     style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--bor)', cursor: r.action ? 'pointer' : 'default' }}
                   >
-                    <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {r.t && <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 600 }}>{r.t}</span>}{' '}
-                      <span style={{ fontSize: 12 }}>{r.n}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {r.t && <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 600 }}>{r.t}</span>}{' '}
+                        <span style={{ fontSize: 12 }}>{r.n}</span>
+                      </div>
+                      {r.sub && <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 2 }}>{r.sub}</div>}
                     </div>
                     <span style={{ fontSize: 9.5, color: r.tagCol, fontFamily: MONO, flexShrink: 0 }}>{r.tag}</span>
                   </div>
