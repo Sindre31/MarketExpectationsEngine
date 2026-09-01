@@ -131,17 +131,52 @@ export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<
   const gCagr = (Math.pow(revA[3] / revA[0], 1 / 3) - 1) * 100;
   const consG = r1(clamp(gCagr, -5, 20));
 
-  const gmA = inc.map((r, i) => r1(clamp((num(r.grossProfit, revA[i] * M * 0.4) / M / revA[i]) * 100, 5, 95)));
-  const daPs = inc.map((r, i) => clamp((num(r.depreciationAndAmortization, 0) / M / revA[i]) * 100, 0, 25));
-  const daGap = r1(daPs.reduce((a, b) => a + b, 0) / daPs.length) || 3;
-  const ebmA = inc.map((r, i) => r1(clamp((num(r.operatingIncome, 0) / M / revA[i]) * 100, -30, 60)));
-  const emA = ebmA.map((v, i) => r1(v + daPs[i]));
+  // Everything below is derived only from what the filings actually contain.
+  // Where a line is missing, the affected output is dropped and recorded in
+  // `notes` rather than back-filled with a plausible-looking number — a
+  // fabricated gross margin or ROIC is indistinguishable from a reported one
+  // once it is on the page.
+  const notes: string[] = [];
 
-  const taxRates = inc.map(r => {
-    const t = num(r.incomeTaxExpense, NaN) / num(r.incomeBeforeTax, NaN);
-    return isNaN(t) ? 0.22 : clamp(t, 0.1, 0.35);
+  const grossRaw = inc.map(r => num(r.grossProfit, NaN));
+  const hasGross = grossRaw.every(v => isFinite(v) && v !== 0);
+  const gmA = hasGross
+    ? grossRaw.map((v, i) => r1(clamp((v / M / revA[i]) * 100, 5, 95)))
+    : revA.map(() => 0);
+  if (!hasGross) notes.push('Gross profit is not in the filings for this company, so gross-margin rows and the gross series are omitted.');
+
+  // D&A separates EBITDA from EBIT and so drives the whole model. The income
+  // statement is the first source and the cash-flow statement the second; both
+  // are reported figures, unlike a percentage-of-revenue guess.
+  const daRaw = inc.map((r, i) => {
+    const fromInc = num(r.depreciationAndAmortization, NaN);
+    if (isFinite(fromInc) && fromInc > 0) return fromInc;
+    const fromCf = num(cf[i].depreciationDepletionAndAmortization, num(cf[i].depreciationAndAmortization, NaN));
+    return isFinite(fromCf) && fromCf > 0 ? fromCf : NaN;
   });
-  const taxPct = r1(clamp((taxRates.reduce((a, b) => a + b, 0) / taxRates.length) * 100, 15, 30));
+  if (daRaw.every(v => !isFinite(v))) {
+    throw new LiveDataError(`Depreciation & amortisation is not reported for "${symbol}", so EBITDA cannot be separated from EBIT.`);
+  }
+  const daPs = daRaw.map((v, i) => (isFinite(v) ? clamp((v / M / revA[i]) * 100, 0, 25) : NaN));
+  const daKnown = daPs.filter(isFinite);
+  const daAvg = daKnown.reduce((a, b) => a + b, 0) / daKnown.length;
+  const daFilled = daPs.map(v => (isFinite(v) ? v : daAvg));
+  if (daKnown.length < daPs.length) notes.push('Depreciation & amortisation is missing for some years; the reported years’ average is used for the rest.');
+  const daGap = r1(daAvg);
+  const ebmA = inc.map((r, i) => r1(clamp((num(r.operatingIncome, 0) / M / revA[i]) * 100, -30, 60)));
+  const emA = ebmA.map((v, i) => r1(v + daFilled[i]));
+
+  // Effective tax from the years that report it; the model's tax rate is an
+  // editable assumption, so a stated fallback is disclosed rather than hidden.
+  const taxKnown = inc
+    .map(r => num(r.incomeTaxExpense, NaN) / num(r.incomeBeforeTax, NaN))
+    .filter(t => isFinite(t))
+    .map(t => clamp(t, 0.1, 0.35));
+  const taxDerived = taxKnown.length > 0;
+  const taxMean = taxDerived ? taxKnown.reduce((a, b) => a + b, 0) / taxKnown.length : 0.22;
+  const taxPct = r1(clamp(taxMean * 100, 15, 30));
+  if (!taxDerived) notes.push('No year reports a usable tax charge; the model starts from a 22% assumption you can change in Expectations.');
+  const taxRates = inc.map(() => taxMean);
 
   const capexA = cf.map((r, i) => r1(clamp((Math.abs(num(r.capitalExpenditures, 0)) / M / revA[i]) * 100, 0.5, 25)));
   const cashA = bal.map(r => (num(r.cashAndCashEquivalentsAtCarryingValue, 0) + num(r.shortTermInvestments, 0)) / M);
@@ -149,11 +184,13 @@ export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<
     num(bal[3].shortLongTermDebtTotal, NaN) / M ||
     (num(bal[3].shortTermDebt, 0) + num(bal[3].longTermDebt, 0)) / M;
 
-  const roicA = inc.map((r, i) => {
+  const roicA: (number | null)[] = inc.map((r, i) => {
     const invested = (num(bal[i].totalAssets, NaN) - num(bal[i].totalCurrentLiabilities, 0)) / M;
+    if (!(invested > 0)) return null;
     const nopat = (num(r.operatingIncome, 0) / M) * (1 - taxRates[i]);
-    return r1(clamp(invested > 0 ? (nopat / invested) * 100 : 10, -20, 60));
+    return r1(clamp((nopat / invested) * 100, -20, 60));
   });
+  if (roicA.some(v => v == null)) notes.push('Invested capital cannot be derived for every year, so ROIC is blank where the balance sheet does not support it.');
   const rndA = inc.map((r, i) => r1(clamp((num(r.researchAndDevelopment, 0) / M / revA[i]) * 100, 0, 30)));
 
   const ni3 = num(inc[3].netIncome, 0) / M;
@@ -173,12 +210,21 @@ export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<
   priceHist[priceHist.length - 1] = price;
 
   const rev = extend(revA, (last, t) => last * Math.pow(1 + consG / 100, t));
-  const gm = extend(gmA, (last, t) => clamp(last + 0.2 * t, 5, 95));
+  // With no reported gross profit there is nothing to extend; keep the series
+  // empty rather than letting the drift clamp it up to a plausible-looking floor.
+  const gm = hasGross ? extend(gmA, (last, t) => clamp(last + 0.2 * t, 5, 95)) : new Array(8).fill(0);
   const em = extend(emA, (last, t) => clamp(last + 0.3 * t, -30, 60));
   const capexP = extend(capexA, (last, t) => clamp(last - 0.1 * t, 0.5, 25));
   const fcfProxy = ((emA[3] - taxPct * ebmA[3] / 100 - capexA[3]) / 100) * revA[3];
   const cash = extend(cashA, (last, t) => last + Math.max(0, fcfProxy) * 0.6 * t);
-  const roic = extend(roicA, (last, t) => clamp(last + 0.3 * t, -20, 60));
+  // ROIC keeps its gaps: if a year has no derivable invested capital the
+  // estimate years built off it are blank too, rather than drifting off a
+  // number that was never there.
+  const roicLast = roicA[3];
+  const roic: (number | null)[] = [
+    ...roicA,
+    ...[1, 2, 3, 4].map(t => (roicLast == null ? null : r1(clamp(roicLast + 0.3 * t, -20, 60)))),
+  ];
   const rnd = extend(rndA, (last, t) => clamp(last - 0.05 * t, 0, 30));
 
   const M0 = em[3];
@@ -320,14 +366,16 @@ export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<
         .replace(/\{ccy\}/g, ccy),
     kpis: [
       mkKpi('Revenue growth (YoY)', growthSeries, v => v.toFixed(1) + '%'),
-      mkKpi('Gross margin', gm, v => v.toFixed(1) + '%'),
+      ...(hasGross ? [mkKpi('Gross margin', gm, v => v.toFixed(1) + '%')] : []),
       mkKpi('EBITDA margin', em, v => v.toFixed(1) + '%'),
       mkKpi('FCF margin (modelled)', fcfMSeries, v => v.toFixed(1) + '%'),
-      mkKpi('ROIC', roic, v => v.toFixed(1) + '%'),
-    ],
+      ...(roic.every((v): v is number => v != null) ? [mkKpi('ROIC', roic as number[], v => v.toFixed(1) + '%')] : []),
+    ].concat(hasGross ? [] : []),
     valFootTail: 'reported multiples are the provider\u2019s own current figures, not a five-year average.',
     ccy,
     fy0,
+    hasGross,
+    notes,
     mktRow: peerFromOverview(ov),
     live: true,
     updated: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),

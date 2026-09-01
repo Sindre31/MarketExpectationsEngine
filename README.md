@@ -99,6 +99,12 @@ because these figures render in columns a reader takes as reported fact:
   left out.
 - **Reported multiples and the 52-week range** are passed through or absent —
   never replaced by a model-derived number or a literal.
+- **Gross margin, ROIC and D&A.** A missing gross-profit line used to become a
+  40% margin, an underivable ROIC became a flat 10%, and absent D&A became 3%
+  of revenue — all feeding the statements and the DCF. Gross rows are now
+  omitted, ROIC shows `–` for the years the balance sheet cannot support, and
+  D&A falls back to the cash-flow statement before the company is refused
+  outright. Whatever was unavailable is listed on the Financials page.
 - **The KPI dashboard is annual on live data** (`Trend (8Y)`), and the forecast
   half of every sparkline is dashed, since only the first four points are
   reported.
@@ -136,9 +142,18 @@ comps, sensitivity, KPI monitor) pan sideways with their label column pinned.
 ```bash
 npm install
 npm run dev       # local dev server
+npm test          # unit tests (vitest)
 npm run build     # type-check + production build into dist/
 npm run preview   # serve the production build
 ```
+
+`.github/workflows/ci.yml` runs the tests and the build on every push and pull
+request. The suite covers the logic that fails *silently* rather than loudly:
+the DCF and its solver (identities, monotonicity, the terminal-spread guard),
+the OVERVIEW→comparison-row mapper whose drift once made a company an outlier
+against its own peers, the industry matcher that once routed pharma companies
+to the industrials group, the live adapter's refusal to invent missing filing
+lines, and the proxy's endpoint whitelist and API-key redaction.
 
 ## Project layout
 

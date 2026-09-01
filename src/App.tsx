@@ -292,7 +292,7 @@ export default function App() {
    */
   const modelledRow: Peer = {
     ticker: c.ticker, name: c.name, mcap: mcapM / 1000, revG: growth[4],
-    ebitdaM: em[4], ebitM: ebm[4], quality: c.roic[3], pe, evEbitda: evE, evSales: evS,
+    ebitdaM: em[4], ebitM: ebm[4], quality: c.roic[3] ?? 0, pe, evEbitda: evE, evSales: evS,
     fcfY, ccy: c.ccy, live: c.live,
   };
   const selfPeer: Peer = peerSet.live && c.mktRow ? { ...c.mktRow, fcfY } : modelledRow;
@@ -680,7 +680,13 @@ export default function App() {
             )}
             {page === 'peers' && <PeersPage {...{ c, C, tt, narrow, peerSet, peerRows, peerBusy, peerNote, setPeerNote, loadPeerGroup, removePeer, apiKey, go }} />}
             {page === 'case' && <CasePage {...{ c, C, narrow, variantText }} />}
-          </div>
+            <div style={{ marginTop: 28, paddingTop: 12, borderTop: '1px solid var(--bor)', fontSize: 10.5, color: 'var(--mut)', lineHeight: 1.5 }}>
+          Research tool, not investment advice. Figures are modelled from third-party data that may be
+          incomplete or stale, and every rating, target and implied value on these pages is the output of
+          adjustable assumptions rather than a recommendation. The built-in {'NDLS'} and {'VSTM'} profiles are
+          fictional companies used for demonstration.
+        </div>
+      </div>
         </main>
       </div>
       {tip && (
@@ -726,6 +732,7 @@ function OverviewPage(P: any) {
   const g25 = growth[3];
   const ndE = netDebt / ebitda[3];
   const fy1 = YRS[4].slice(0, 4); // e.g. "FY26"
+  const pctN = (v: number | null) => (v == null ? '–' : v.toFixed(1) + '%');
   const ovMetrics = [
     { l: 'Revenue', v: ccy + ' ' + fB(rev[3]) + 'bn', sub: fy1 + 'E ' + fB(rev26) + 'bn', subCol: 'var(--mut)', tip: 'FY' + c.fy0 + 'A reported revenue' },
     { l: 'Revenue growth', v: (g25 >= 0 ? '+' : '') + g25.toFixed(1) + '%', sub: fy1 + 'E ' + (growth[4] >= 0 ? '+' : '') + growth[4].toFixed(1) + '%', subCol: 'var(--pos)', tip: 'Year-over-year revenue growth' },
@@ -734,7 +741,7 @@ function OverviewPage(P: any) {
     { l: 'EBIT margin', v: ebm[3].toFixed(1) + '%', sub: fy1 + 'E ' + ebm[4].toFixed(1) + '%', subCol: 'var(--pos)', tip: 'Operating profit / revenue' },
     { l: 'EPS', v: ccy + ' ' + eps25.toFixed(2), sub: fy1 + 'E ' + eps26.toFixed(2), subCol: 'var(--mut)', tip: 'Diluted earnings per share' },
     { l: 'Free cash flow', v: ccy + ' ' + fB(fcf25) + 'bn', sub: ((fcf25 / rev[3]) * 100).toFixed(1) + '% margin', subCol: 'var(--mut)', tip: 'Operating cash flow less capex' },
-    { l: 'ROIC', v: c.roic[3].toFixed(1) + '%', sub: fy1 + 'E ' + c.roic[4].toFixed(1) + '%', subCol: 'var(--pos)', tip: 'Return on invested capital — NOPAT / invested capital' },
+    { l: 'ROIC', v: pctN(c.roic[3]), sub: fy1 + 'E ' + pctN(c.roic[4]), subCol: 'var(--pos)', tip: 'Return on invested capital — NOPAT / invested capital' },
     { l: 'Net debt / EBITDA', v: (ndE < 0 ? '−' : '') + Math.abs(ndE).toFixed(1) + 'x', sub: ndE < 0 ? 'Net cash ' + fB(-netDebt) + 'bn' : 'Net debt ' + fB(netDebt) + 'bn', subCol: ndE < 0.5 ? 'var(--pos)' : 'var(--est)', tip: 'Negative = net cash position' },
     { l: 'FCF yield', v: fcfY.toFixed(1) + '%', sub: medFcfy == null ? 'of market cap' : 'vs peers ' + medFcfy.toFixed(1) + '%', subCol: medFcfy != null && fcfY < medFcfy ? 'var(--neg)' : 'var(--pos)', tip: 'Free cash flow / market cap' },
   ];
@@ -822,9 +829,9 @@ function OverviewPage(P: any) {
         </div>
         <div style={{ ...card, padding: '16px 18px' }}>
           <div style={{ ...cardTitle, marginBottom: 8 }}>Margin development · %</div>
-          {lineChart({ w: 400, h: 175, series: [{ v: gm, c: C.txt, wd: 1.6, n: 'Gross' }, { v: em, c: C.s1, wd: 1.8, dots: true, n: 'EBITDA' }, { v: ebm, c: C.s2, wd: 1.6, n: 'EBIT' }], labels: YRS.map((y: string) => y.slice(2)), fmt: v => v.toFixed(0) + '%', tipFmt: v => v.toFixed(1) + '%', C }, tt)}
+          {lineChart({ w: 400, h: 175, series: [...(c.hasGross === false ? [] : [{ v: gm, c: C.txt, wd: 1.6, n: 'Gross' }]), { v: em, c: C.s1, wd: 1.8, dots: true, n: 'EBITDA' }, { v: ebm, c: C.s2, wd: 1.6, n: 'EBIT' }], labels: YRS.map((y: string) => y.slice(2)), fmt: v => v.toFixed(0) + '%', tipFmt: v => v.toFixed(1) + '%', C }, tt)}
           <div style={{ display: 'flex', gap: 14, fontSize: 10, color: 'var(--mut)', marginTop: 6 }}>
-            <span>— Gross</span>
+            {c.hasGross !== false && <span>— Gross</span>}
             <span style={{ color: 'var(--acc)' }}>— EBITDA</span>
             <span style={{ color: 'var(--est)' }}>— EBIT</span>
           </div>
@@ -884,7 +891,7 @@ function ExpectationsPage(P: any) {
     { l: 'Implied rev. CAGR', v: implG.toFixed(1) + '%', sub: 'cons. ' + c.consG.toFixed(1) + '%', tip: 'Revenue growth needed to justify the price, holding your other assumptions' },
     { l: 'Implied term. margin', v: implEm.toFixed(1) + '%', sub: 'today ' + c.M0.toFixed(1) + '%', tip: 'FY30 EBITDA margin needed at consensus growth' },
     { l: 'Implied FCF margin', v: implFcfM.toFixed(1) + '%', sub: 'today ' + ((fcf25 / rev[3]) * 100).toFixed(1) + '%', tip: 'FY30 FCF margin at the implied growth path' },
-    { l: 'Implied ROIC', v: implRoic.toFixed(1) + '%', sub: 'today ' + c.roic[3].toFixed(1) + '%', tip: 'FY30 return on invested capital at implied assumptions' },
+    { l: 'Implied ROIC', v: implRoic.toFixed(1) + '%', sub: c.roic[3] == null ? 'today n/a' : 'today ' + c.roic[3].toFixed(1) + '%', tip: 'FY30 return on invested capital at implied assumptions' },
     { l: 'TV % of EV', v: (d.tvShare * 100).toFixed(0) + '%', sub: 'terminal value', tip: 'Share of enterprise value beyond the explicit forecast' },
   ];
   // "what the market is pricing in" chart
@@ -1062,8 +1069,10 @@ function FinancialsPage(P: any) {
   const isRows: FinRowDef[] = [
     row('rev', 'Revenue', rev, fM, hasSegs ? { bold: 1, exp: 1 } : { bold: 1 }),
     row('g', 'YoY growth %', growth, pctF, { sub: 1 }),
-    row('gp', 'Gross profit', rev.map((r: number, i: number) => (r * gm[i]) / 100), fM),
-    row('gpm', 'Gross margin %', gm, pctF, { sub: 1 }),
+    ...(c.hasGross === false ? [] : [
+      row('gp', 'Gross profit', rev.map((r: number, i: number) => (r * gm[i]) / 100), fM),
+      row('gpm', 'Gross margin %', gm, pctF, { sub: 1 }),
+    ]),
     row('ebitda', 'EBITDA', ebitda, fM, { bold: 1 }),
     row('ebitdam', 'EBITDA margin %', em, pctF, { sub: 1 }),
     row('da', 'D&A', rev.map((r: number) => (-r * c.daGap) / 100), fM),
@@ -1099,7 +1108,7 @@ function FinancialsPage(P: any) {
     row('bb', 'Share buybacks', rev.map((_r: number, i: number) => c.buyback(i)), fM),
   ];
   const kpiRows: FinRowDef[] = [
-    row('roic', 'ROIC %', c.roic, pctF, { bold: 1 }),
+    row('roic', 'ROIC %', c.roic, (v: number | null) => (v == null ? '–' : v.toFixed(1) + '%'), { bold: 1 }),
     row('roe', 'ROE %', ni.map((n: number, i: number) => (n / (c.cash[i] + rev[i] * 0.46 + 8600)) * 100), pctF),
     row('fcfm2', 'FCF margin %', fcf.map((f: number, i: number) => (f / rev[i]) * 100), pctF),
     row('conv', 'FCF conversion (FCF/NI) %', fcf.map((f: number, i: number) => (f / ni[i]) * 100), (v: number) => v.toFixed(0) + '%'),
@@ -1180,6 +1189,9 @@ function FinancialsPage(P: any) {
           {rowsOut}
         </div>
       </div>
+      {(c.notes || []).map((n: string) => (
+        <div key={n} style={{ fontSize: 10.5, color: 'var(--est)', background: 'var(--estBg)', border: '1px solid var(--bor)', borderRadius: 4, padding: '7px 12px', marginTop: 8 }}>{n}</div>
+      ))}
       <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 8 }}>
         {'A = actual · E = estimate (shaded).' + (narrow ? ' Swipe the table sideways for later years.' : '') + (hasSegs ? ' Click Revenue to expand segment detail.' : c.live ? ' Estimates are trend extrapolations from reported filings.' : '')}
       </div>

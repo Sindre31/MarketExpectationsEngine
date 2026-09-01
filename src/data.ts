@@ -45,10 +45,15 @@ export interface Company {
   /** Revenue FY22A–FY29E, NOK m */
   rev: number[];
   gm: number[];
+  /** False when the filings carry no gross profit, so gross rows are omitted. */
+  hasGross?: boolean;
+  /** What the source could not supply, shown rather than silently back-filled. */
+  notes?: string[];
   em: number[];
   capexP: number[];
   cash: number[];
-  roic: number[];
+  /** Return on invested capital, %. Null for a year the filings cannot support. */
+  roic: (number | null)[];
   rnd: number[];
   buyback: (i: number) => number;
   divRate: number;

@@ -40,7 +40,7 @@ const SAFE = /^[A-Za-z0-9 .\-:&]{1,40}$/;
  * as ..."). Forwarding that verbatim would publish the shared key to every
  * visitor, so scrub the key itself plus anything key-shaped before replying.
  */
-function redact(msg: string, key: string): string {
+export function redact(msg: string, key: string): string {
   let out = key ? msg.split(key).join('***') : msg;
   out = out.replace(/(API key(?: as)?\s*)[A-Z0-9]{8,}/gi, '$1***');
   return out;
