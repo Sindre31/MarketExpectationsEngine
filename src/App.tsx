@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CO, MOCK_PEERS, type Assumptions, type Company, type Peer, type PeerSet, type ScenarioId } from './data';
 import { cachePeers, fetchPeerGroup, loadCachedPeers, suggestPeers } from './peers';
 import { dcf, impliedPricePerShare, solve } from './engine';
+import { median, quartiles } from './stats';
 import { LiveDataError, fetchLiveCompany, searchSymbols, type SearchHit } from './live';
 import {
   DARK, LIGHT, comboChart, lineChart, rangeChart, scatterChart, sparkline, waterfallChart,
@@ -302,16 +303,19 @@ export default function App() {
   const others = peerSet.peers.filter(p => p.ticker !== c.ticker);
 
   /** Median of a peer metric, or null when no peer reports it. */
-  const med = (pick: (p: Peer) => number | null): number | null => {
-    const s = others.map(pick).filter((v): v is number => v != null && isFinite(v)).sort((x, y) => x - y);
-    if (!s.length) return null;
-    const m = Math.floor(s.length / 2);
-    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-  };
-  /** Low–high of a peer metric, for football-field bars built from real peers. */
+  const med = (pick: (p: Peer) => number | null): number | null =>
+    median(others.map(pick).filter((v): v is number => v != null && isFinite(v)));
+  const usable = (pick: (p: Peer) => number | null) =>
+    others.map(pick).filter((x): x is number => x != null && isFinite(x) && x > 0);
+
+  /**
+   * The middle half of a peer metric, for football-field bars. Min–max let a
+   * single distressed name set the whole band — DXC's 0.3x EV/Sales dragged
+   * IBM's bar down to a zero-floored price — so the extremes are dropped.
+   */
   const peerRange = (pick: (p: Peer) => number | null): [number, number] | null => {
-    const v = others.map(pick).filter((x): x is number => x != null && isFinite(x) && x > 0).sort((a, b) => a - b);
-    return v.length >= 2 ? [v[0], v[v.length - 1]] : null;
+    const q = quartiles(usable(pick));
+    return q ? [Math.round(q.q1 * 10) / 10, Math.round(q.q3 * 10) / 10] : null;
   };
   const rangePe = peerRange(p => p.pe);
   const rangeEve = peerRange(p => p.evEbitda);
@@ -1373,7 +1377,7 @@ function ValuationPage(P: any) {
       return hi > 0 ? { label: `${label} ${src[0]}–${src[1]}x${suffix}`, lo, hi, c: C.bar } : null;
     };
     if (band) return bar(band, '');
-    if (range) return bar(range, ' · peers');
+    if (range) return bar(range, ' · peer IQR');
     return null;
   };
   field.push(
@@ -1443,7 +1447,7 @@ function ValuationPage(P: any) {
           {rangeChart(fieldBars, PRICE, C, tt, undefined, ccy)}
           <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 8 }}>
             {c.live
-              ? 'Multiple bars span the live peer group’s own low–high. Where no peer or reported range exists the bar is omitted rather than estimated.'
+              ? 'Multiple bars span the middle half of the live peer group (interquartile range), so one distressed or richly-valued name cannot set the band. Fewer than four peers, or no reported range, and the bar is omitted rather than estimated.'
               : 'Multiple bars use each metric’s historical trading band.'}
           </div>
         </div>

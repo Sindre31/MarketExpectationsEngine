@@ -93,10 +93,15 @@ Where the provider publishes nothing, the app shows `–` rather than a stand-in
 because these figures render in columns a reader takes as reported fact:
 
 - **Football-field multiple bars.** There are no historical trading bands for a
-  live company, so bars are built from the peer group's actual low–high and
-  labelled `· peers`. A spread around today's multiple would be arithmetic
-  wearing a band's clothes; where no peer or reported range exists, the bar is
-  left out.
+  live company, so bars span the **middle half of the peer group** (the
+  interquartile range) and are labelled `· peer IQR`. Min–max let one name set
+  the whole band — DXC's 0.3x EV/Sales dragged IBM's bar down to a
+  zero-floored price — so the extremes are dropped. A spread around today's
+  multiple would be arithmetic wearing a band's clothes; with fewer than four
+  peers, or no reported range, the bar is left out.
+- **Prices implied by a multiple are floored at zero.** Enterprise value less
+  net debt goes negative for a leveraged company at a low multiple, but
+  limited liability means equity is never worth less than nothing.
 - **Reported multiples and the 52-week range** are passed through or absent —
   never replaced by a model-derived number or a literal.
 - **Gross margin, ROIC and D&A.** A missing gross-profit line used to become a
