@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { fetchLiveCompany, LiveDataError, foreignListingHint } from '../live';
+import { fetchLiveCompany, LiveDataError, secondaryListingHint } from '../live';
 
 /** Four fiscal years of a plainly profitable company, oldest last (API order). */
 const years = ['2022-12-31', '2023-12-31', '2024-12-31', '2025-12-31'].reverse();
@@ -177,51 +177,69 @@ describe('effective tax rate', () => {
   });
 });
 
-describe('foreignListingHint', () => {
+describe('secondaryListingHint · secondary US lines', () => {
+  it('catches an OTC line that has no suffix to give it away', () => {
+    // STOHF is Equinor's OTC line: quoted at 42.60 on 305 shares, no filings
+    expect(secondaryListingHint('STOHF', 'Equinor ASA')).toMatch(/Load EQNR instead/);
+    expect(secondaryListingHint('STOHF', 'Equinor ASA', true)).toBe('A secondary line of EQNR — load EQNR instead');
+  });
+
+  it('does not refuse the filing line itself', () => {
+    expect(secondaryListingHint('EQNR', 'Equinor ASA')).toBeNull();
+    expect(secondaryListingHint('NVO', 'Novo Nordisk A/S')).toBeNull();
+  });
+
+  it('needs the name — a bare unknown ticker is still worth trying', () => {
+    expect(secondaryListingHint('STOHF')).toBeNull();
+    expect(secondaryListingHint('NHYDY', 'Norsk Hydro ASA')).toBeNull();
+  });
+});
+
+describe('secondaryListingHint', () => {
   it('names the US line for a local Nordic ticker that has one', () => {
-    expect(foreignListingHint('EQNR.OL')).toMatch(/Load EQNR instead/);
-    expect(foreignListingHint('novo-b.co')).toMatch(/Load NVO instead/);
+    expect(secondaryListingHint('EQNR.OL')).toMatch(/Load EQNR instead/);
+    expect(secondaryListingHint('novo-b.co')).toMatch(/Load NVO instead/);
   });
 
   it('resolves a foreign line to its US ticker by company name', () => {
     // 0M2Z.LON is Equinor quoted in NOK: priced, but no filings behind it
-    expect(foreignListingHint('0M2Z.LON', 'Equinor ASA')).toMatch(/Load EQNR instead/);
-    expect(foreignListingHint('ERCB.FRK', 'Telefonaktiebolaget LM Ericsson')).toMatch(/Load ERIC instead/);
+    expect(secondaryListingHint('0M2Z.LON', 'Equinor ASA')).toMatch(/Load EQNR instead/);
+    expect(secondaryListingHint('ERCB.FRK', 'Telefonaktiebolaget LM Ericsson')).toMatch(/Load ERIC instead/);
   });
 
   it('names the venue it recognises', () => {
-    expect(foreignListingHint('MOWI.OL')).toMatch(/Oslo Børs/);
-    expect(foreignListingHint('0M2Z.LON')).toMatch(/London Stock Exchange/);
-    expect(foreignListingHint('E1QN34.SAO')).toMatch(/São Paulo/);
+    expect(secondaryListingHint('MOWI.OL')).toMatch(/Oslo Børs/);
+    expect(secondaryListingHint('0M2Z.LON')).toMatch(/London Stock Exchange/);
+    expect(secondaryListingHint('E1QN34.SAO')).toMatch(/São Paulo/);
   });
 
   it('falls back to a generic venue for a suffix it does not know', () => {
-    expect(foreignListingHint('ABC.ZZZZ')).toMatch(/non-US exchanges/);
+    expect(secondaryListingHint('ABC.ZZZZ')).toMatch(/non-US exchanges/);
   });
 
   it('offers a US listing when no specific one is known', () => {
-    expect(foreignListingHint('MOWI.OL')).toMatch(/NYSE or NASDAQ/);
+    expect(secondaryListingHint('MOWI.OL')).toMatch(/NYSE or NASDAQ/);
   });
 
   it('is null for a US symbol', () => {
-    expect(foreignListingHint('EQNR')).toBeNull();
-    expect(foreignListingHint('IBM')).toBeNull();
-    expect(foreignListingHint('BRK-B')).toBeNull();
+    expect(secondaryListingHint('EQNR')).toBeNull();
+    expect(secondaryListingHint('IBM')).toBeNull();
+    expect(secondaryListingHint('BRK-B')).toBeNull();
   });
 });
 
-describe('foreignListingHint · short form', () => {
+describe('secondaryListingHint · short form', () => {
   it('fits a dropdown row and still names the US line', () => {
-    const short = foreignListingHint('0M2Z.LON', 'Equinor ASA', true)!;
+    const short = secondaryListingHint('0M2Z.LON', 'Equinor ASA', true)!;
     expect(short).toBe('No filings for the London Stock Exchange — load EQNR instead');
     expect(short.length).toBeLessThan(70);
   });
 
   it('points at a US listing generically when none is known', () => {
-    expect(foreignListingHint('MOWI.OL', '', true)).toMatch(/try its NYSE or NASDAQ line/);
+    expect(secondaryListingHint('MOWI.OL', '', true)).toMatch(/try its NYSE or NASDAQ line/);
   });
 
   it('stays null for a US symbol', () => {
-    expect(foreignListingHint('IBM', 'International Business Machines', true)).toBeNull();
+    expect(secondaryListingHint('IBM', 'International Business Machines', true)).toBeNull();
   });
 });

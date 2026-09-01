@@ -3,7 +3,7 @@ import { CO, MOCK_PEERS, type Assumptions, type Company, type Peer, type PeerSet
 import { cachePeers, fetchPeerGroup, loadCachedPeers, suggestPeers } from './peers';
 import { dcf, impliedPricePerShare, solve } from './engine';
 import { median, quartiles } from './stats';
-import { LiveDataError, fetchLiveCompany, foreignListingHint, searchSymbols, type SearchHit } from './live';
+import { LiveDataError, fetchLiveCompany, secondaryListingHint, searchSymbols, type SearchHit } from './live';
 import {
   DARK, LIGHT, comboChart, lineChart, rangeChart, scatterChart, sparkline, waterfallChart,
   type Palette, type TipFn, type TipLine,
@@ -457,7 +457,7 @@ export default function App() {
   // and would otherwise bury the one US line that works
   const liveHits = hits
     .filter(h => !companies[h.symbol.toUpperCase()])
-    .map(h => ({ h, hint: foreignListingHint(h.symbol, h.name, true) }));
+    .map(h => ({ h, hint: secondaryListingHint(h.symbol, h.name, true) }));
   [...liveHits.filter(x => !x.hint), ...liveHits.filter(x => x.hint)]
     .slice(0, 5)
     .forEach(({ h, hint }) => {
@@ -472,7 +472,7 @@ export default function App() {
     });
   const typed = searchQ.trim().toUpperCase();
   if (typed.length >= 1 && !companies[typed] && !hits.some(h => h.symbol.toUpperCase() === typed)) {
-    const hint = foreignListingHint(typed, '', true);
+    const hint = secondaryListingHint(typed, '', true);
     searchRows.push({
       t: typed,
       n: hint ? 'Not modellable from this listing' : 'Load this exact symbol from the API',

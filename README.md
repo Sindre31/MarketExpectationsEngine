@@ -74,13 +74,20 @@ For the non-US listings it does carry, it serves **prices only**: `0M2Z.LON`
 quotes Equinor in NOK and returns a clean `GLOBAL_QUOTE`, but its `OVERVIEW`
 is empty, and a reverse DCF has nothing to run on without filings.
 
-The same holds for every foreign venue, so **any suffixed symbol** is refused
-up front with the reason rather than the provider's bare `No data returned` —
-in the search dropdown as a `NO FILINGS` row, and in the adapter before a
-request is spent. Where the US line of the same company is known to work it is
-named: `EQNR.OL` and `0M2Z.LON` both offer `EQNR`, `NOVO-B.CO` offers `NVO`.
-A search hit resolves by company name, which is what lets an opaque code like
-`0M2Z.LON` find its way to `EQNR`.
+The same holds for every foreign venue, and for OTC lines too: `STOHF` is
+Equinor's OTC ticker, quoted at 42.60 USD on 305 shares with a full monthly
+history and not one filing behind it. So a company's **secondary listings are
+refused up front** with the reason rather than the provider's bare `No data
+returned` — in the search dropdown as a `NO FILINGS` row, and in the adapter
+before a request is spent — and where the line that files is known it is
+named: `EQNR.OL`, `0M2Z.LON`, `DNQ.FRK` and `STOHF` all offer `EQNR`.
+
+An exchange suffix catches the foreign lines. `STOHF` has none — it looks like
+any other US ticker — so the second kind is caught by **company name**: a
+search hit naming a company whose filing line is known, under a symbol that is
+not that line, is a secondary listing. Without a name to go on, an unknown
+ticker is still attempted; if it comes back empty the error says what an empty
+`OVERVIEW` actually means, rather than repeating `No data returned`.
 
 Reaching Oslo Børs properly means a second provider. Twelve Data does index
 the exchange (EQNR, NHY, MOWI and the rest on XOSL, priced in NOK), but on its

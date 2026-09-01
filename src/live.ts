@@ -101,21 +101,26 @@ function last4(reports: any[]): any[] {
 }
 
 /**
- * Non-US listings.
+ * Secondary listings — every line of a company except the one that files.
  *
- * Alpha Vantage's fundamentals are US-listings-only, and it fails in two
- * different ways depending on the venue. Oslo Børs and the other local Nordic
- * exchanges are absent from the symbol index entirely — searching "Equinor"
- * returns London, Frankfurt, New York and São Paulo but nothing on XOSL, and
- * EQNR.OL answers "No data returned". The foreign lines it does index are
- * priced but not filed: 0M2Z.LON quotes Equinor in NOK and returns a clean
- * GLOBAL_QUOTE and a full monthly history, while its OVERVIEW,
+ * Alpha Vantage carries fundamentals for a company's primary US listing only,
+ * and it fails in two different ways elsewhere. Oslo Børs and the other local
+ * Nordic exchanges are absent from the symbol index entirely — searching
+ * "Equinor" returns London, Frankfurt, New York and São Paulo but nothing on
+ * XOSL, and EQNR.OL answers "No data returned". Everything else it does index
+ * is priced but not filed: 0M2Z.LON (Equinor in NOK on the LSE) and STOHF
+ * (Equinor's OTC line, 42.60 USD on 305 shares) both return a clean
+ * GLOBAL_QUOTE and a full monthly history, while their OVERVIEW,
  * INCOME_STATEMENT, BALANCE_SHEET and CASH_FLOW are all empty.
  *
- * Either way a reverse DCF has nothing to run on, so a suffixed symbol is
- * refused up front — with the reason, and with the US line of the same company
- * where one is known to work, rather than the provider's bare "No data
- * returned".
+ * An exchange suffix catches the first kind. The second kind is invisible in
+ * the ticker — STOHF looks like any other US symbol — so it is caught by the
+ * company name instead: a search hit naming a company whose filing line we
+ * know, under a symbol that is not that line, is a secondary listing.
+ *
+ * Either way a reverse DCF has nothing to run on, so the row is refused up
+ * front with the reason and with the ticker that does work, rather than the
+ * provider's bare "No data returned".
  */
 const EXCHANGE_SUFFIX = /\.([A-Za-z]{2,4})$/;
 
@@ -138,11 +143,11 @@ const VENUE: Record<string, string> = {
 };
 
 /**
- * The US line of a company reachable under a foreign symbol, keyed both by
- * that symbol and by the reported company name — a search hit gives the name,
- * so 0M2Z.LON ("Equinor ASA") resolves the same way EQNR.OL does. Only the
- * seven Nordic tickers verified to return fundamentals are listed; an ADR that
- * comes back empty is no more useful than the foreign line it replaces.
+ * The line that files, for a company reachable under more than one symbol —
+ * keyed both by symbol and by reported company name, since a search hit gives
+ * the name and that is the only handle on a code like 0M2Z.LON or STOHF. Only
+ * the seven Nordic tickers verified to return fundamentals are listed; an ADR
+ * that comes back empty is no more useful than the line it replaces.
  */
 const US_LINE: Record<string, string> = {
   'EQNR.OL': 'EQNR', 'FRO.OL': 'FRO',
@@ -162,17 +167,26 @@ const US_LINE_BY_NAME: [RegExp, string][] = [
 ];
 
 /**
- * A message for a non-US listing, or null if the symbol is a US one.
+ * A message for a listing that cannot be modelled, or null if the symbol looks
+ * like a company's own filing line.
  *
  * `name` is the company name from a search hit, when there is one — it is what
- * lets an opaque foreign code resolve to its US line.
+ * lets an opaque code like 0M2Z.LON or an OTC ticker like STOHF resolve to the
+ * line that files.
  */
-export function foreignListingHint(symbol: string, name = '', short = false): string | null {
+export function secondaryListingHint(symbol: string, name = '', short = false): string | null {
   const sym = symbol.trim().toUpperCase();
-  const m = EXCHANGE_SUFFIX.exec(sym);
-  if (!m) return null;
-  const venue = VENUE[m[1].toUpperCase()] || 'non-US exchanges';
   const alt = US_LINE[sym] || US_LINE_BY_NAME.find(([re]) => re.test(name))?.[1];
+  const m = EXCHANGE_SUFFIX.exec(sym);
+  if (!m) {
+    // no suffix: only the company name can tell a secondary US line from the
+    // primary one, and the primary is the ticker we already know files
+    if (!alt || alt === sym) return null;
+    return short
+      ? `A secondary line of ${alt} \u2014 load ${alt} instead`
+      : `Alpha Vantage files nothing under "${symbol}", which is a secondary listing rather than the line ${name || 'this company'} reports on \u2014 it is quoted but carries no income statement, balance sheet or cash-flow statement. Load ${alt} instead.`;
+  }
+  const venue = VENUE[m[1].toUpperCase()] || 'non-US exchanges';
   // the short form is for a dropdown row, which has one line to say it in
   if (short) {
     return alt
@@ -188,13 +202,25 @@ export function foreignListingHint(symbol: string, name = '', short = false): st
 export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<Company> {
   // sequential, spaced just over a second: Alpha Vantage's free tier documents
   // a limit of one request per second and answers bursts with a notice
-  const hint = foreignListingHint(symbol);
+  const hint = secondaryListingHint(symbol);
   if (hint) throw new LiveDataError(hint);
   const results: any[] = [];
   const fns = ['OVERVIEW', 'GLOBAL_QUOTE', 'INCOME_STATEMENT', 'BALANCE_SHEET', 'CASH_FLOW', 'TIME_SERIES_MONTHLY_ADJUSTED'];
   for (let i = 0; i < fns.length; i++) {
     if (i) await pause(1100);
-    results.push(await av({ function: fns[i], symbol }, apiKey));
+    try {
+      results.push(await av({ function: fns[i], symbol }, apiKey));
+    } catch (e) {
+      // an empty OVERVIEW is the provider saying it files nothing for this
+      // symbol — true of a typo, and equally true of a real, actively traded
+      // line like STOHF that simply is not the one the company reports on
+      if (i === 0 && e instanceof LiveDataError && /no data returned/i.test(e.message)) {
+        throw new LiveDataError(
+          `Alpha Vantage files nothing under "${symbol}". Either the ticker is wrong, or it is a secondary listing — an OTC or non-US line of a company that reports under a different symbol. Only the filing line can be modelled.`,
+        );
+      }
+      throw e;
+    }
   }
   const [ov, quoteRes, incRes, balRes, cfRes, tsRes] = results;
   if (!ov.Symbol) throw new LiveDataError(`No fundamentals found for "${symbol}"`);
