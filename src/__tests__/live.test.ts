@@ -131,3 +131,26 @@ describe('fetchLiveCompany', () => {
     await expect(fetchLiveCompany('NOPE', 'k')).rejects.toBeInstanceOf(LiveDataError);
   });
 });
+
+describe('effective tax rate', () => {
+  it('keeps a genuinely high statutory regime instead of capping it at 30%', async () => {
+    // Equinor reports 63-80% under Norway's petroleum tax; a 30% ceiling was
+    // handing it more than double its real after-tax cash flow
+    stubApi({ INCOME_STATEMENT: { annualReports: income({ incomeBeforeTax: B(25), incomeTaxExpense: B(20) }) } });
+    const c = await fetchLiveCompany('TEST', 'k');
+    expect(c.defA.tax).toBeCloseTo(80, 0);
+  });
+
+  it('keeps an ordinary rate unchanged', async () => {
+    stubApi({ INCOME_STATEMENT: { annualReports: income({ incomeBeforeTax: B(20), incomeTaxExpense: B(4) }) } });
+    expect((await fetchLiveCompany('TEST', 'k')).defA.tax).toBeCloseTo(20, 0);
+  });
+
+  it('rejects arithmetic nonsense rather than a merely unusual rate', async () => {
+    // a tax charge against a negative pre-tax figure yields a negative ratio
+    stubApi({ INCOME_STATEMENT: { annualReports: income({ incomeBeforeTax: B(-10), incomeTaxExpense: B(3) }) } });
+    const c = await fetchLiveCompany('TEST', 'k');
+    expect(c.defA.tax).toBeGreaterThanOrEqual(0);
+    expect(c.defA.tax).toBeLessThanOrEqual(85);
+  });
+});

@@ -168,13 +168,18 @@ export async function fetchLiveCompany(symbol: string, apiKey: string): Promise<
 
   // Effective tax from the years that report it; the model's tax rate is an
   // editable assumption, so a stated fallback is disclosed rather than hidden.
+  // The band has to admit the real world: Norway taxes offshore petroleum at
+  // ~78%, so Equinor reports 63-80% and a 35% ceiling was quietly handing it
+  // more than double its actual after-tax cash flow. The bounds now only reject
+  // arithmetic nonsense (a tax charge against a near-zero or negative pre-tax
+  // figure), not unusual-but-real regimes.
   const taxKnown = inc
     .map(r => num(r.incomeTaxExpense, NaN) / num(r.incomeBeforeTax, NaN))
     .filter(t => isFinite(t))
-    .map(t => clamp(t, 0.1, 0.35));
+    .map(t => clamp(t, 0, 0.85));
   const taxDerived = taxKnown.length > 0;
   const taxMean = taxDerived ? taxKnown.reduce((a, b) => a + b, 0) / taxKnown.length : 0.22;
-  const taxPct = r1(clamp(taxMean * 100, 15, 30));
+  const taxPct = r1(clamp(taxMean * 100, 0, 85));
   if (!taxDerived) notes.push('No year reports a usable tax charge; the model starts from a 22% assumption you can change in Expectations.');
   const taxRates = inc.map(() => taxMean);
 

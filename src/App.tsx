@@ -887,7 +887,7 @@ function ExpectationsPage(P: any) {
     ['Terminal growth', 'tg', 0, 4, 0.1, '%', 'Perpetual growth beyond FY30; should not exceed long-run nominal GDP'],
     ['EBITDA margin (terminal)', 'em', 20, 45, 0.1, '%', 'FY30 EBITDA margin; interpolated from ' + c.M0 + '% today'],
     ['EBIT margin (terminal)', 'eb', 15, 38, 0.1, '%', 'FY30 EBIT margin; gap to EBITDA margin approximates D&A'],
-    ['Tax rate', 'tax', 15, 30, 0.5, '%', 'Cash tax rate on EBIT'],
+    ['Tax rate', 'tax', 0, 85, 0.5, '%', 'Cash tax rate on EBIT. Ranges widely by regime — Norwegian offshore petroleum runs near 78%.'],
     ['Capex % of revenue', 'capex', 3, 12, 0.1, '%', 'Growth and maintenance capital expenditure'],
     ['WACC', 'wacc', 6, 12, 0.1, '%', 'Weighted average cost of capital (discount rate)'],
   ];
