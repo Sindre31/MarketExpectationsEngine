@@ -35,6 +35,13 @@ const UNIVERSE: Record<string, string[]> = {
   aerospace: ['BA', 'LMT', 'RTX', 'NOC', 'GD', 'LHX', 'TDG', 'HWM'],
   industrials: ['CAT', 'DE', 'HON', 'MMM', 'EMR', 'ETN', 'PH', 'ITW', 'CMI', 'GE'],
   energy: ['XOM', 'CVX', 'COP', 'EOG', 'SLB', 'PSX', 'VLO', 'MPC', 'OXY', 'HAL'],
+  // drillers and equipment names sit apart from the integrated majors: a rig
+  // operator's multiples say nothing about Equinor's, and vice versa
+  oilServices: ['SLB', 'HAL', 'BKR', 'NOV', 'RIG', 'SDRL', 'BORR'],
+  // tankers and gas carriers, kept out of `transport` — a crude tanker has
+  // nothing in common with UPS or Union Pacific. The names are Nordic-heavy
+  // because the listed sector is, not by regional preference.
+  shipping: ['FRO', 'DHT', 'NAT', 'HAFN', 'SFL', 'FLNG', 'BWLP'],
   utilities: ['NEE', 'DUK', 'SO', 'D', 'AEP', 'EXC', 'XEL', 'ED'],
   telecom: ['T', 'VZ', 'TMUS', 'CMCSA', 'CHTR'],
   transport: ['UPS', 'FDX', 'UNP', 'CSX', 'NSC', 'DAL', 'UAL', 'LUV'],
@@ -53,17 +60,30 @@ const UNIVERSE: Record<string, string[]> = {
  * nor for OTC pink-sheet ADRs (NHYDY, YARIY, DNNGY, ATLKY, VLVLY, NRDBY were
  * all tested and returned nothing). Every ticker here has been checked to
  * return a usable OVERVIEW; anything else can still be added by hand on the
- * Peers page.
+ * Peers page. GOGL and ZEAL were tried and answer "No data returned"; EVAX
+ * returns data but is pre-revenue with negative equity, which makes it noise
+ * in a five-name group rather than a comparison.
+ *
+ * "Nordic" here is an editorial call, not a provider field. The shipping and
+ * offshore names report Country: USA because they are Bermuda-domiciled, but
+ * they are Oslo-listed and Norwegian-run, and Frontline — in this list from the
+ * start — is the same shape. Spotify is a Luxembourg SA on the same reasoning.
  */
 const NORDIC: Partial<Record<keyof typeof UNIVERSE, string[]>> = {
-  pharma: ['NVO', 'GMAB'],
-  biotech: ['GMAB', 'NVO'],
+  pharma: ['NVO', 'GMAB', 'ALVO'],
+  biotech: ['GMAB', 'ASND', 'NVO'],
   hardware: ['ERIC', 'NOK'],
   telecom: ['ERIC', 'NOK'],
+  // deliberately just the two: Equinor is an integrated major, and leading its
+  // group with drillers or tankers would compare it against the wrong business
   energy: ['EQNR', 'FRO'],
-  transport: ['FRO'],
+  oilServices: ['SDRL', 'BORR'],
+  shipping: ['FRO', 'HAFN', 'SFL', 'DHT', 'NAT', 'FLNG', 'BWLP'],
+  transport: ['FRO', 'HAFN', 'SFL'],
   autos: ['ALV'],
-  industrials: ['ALV', 'ERIC'],
+  industrials: ['ALV', 'CDLR', 'ERIC'],
+  internet: ['SPOT'],
+  foodBev: ['OTLY'],
 };
 
 /** Every verified Nordic ticker, for recognising a Nordic company by symbol. */
@@ -101,10 +121,12 @@ const BY_INDUSTRY: [RegExp, keyof typeof UNIVERSE][] = [
   [/COMMUNICATION EQUIPMENT|CONSUMER ELECTRONICS|COMPUTER HARDWARE/, 'hardware'],
   [/TELECOM SERVICES/, 'telecom'],
   [/AUTO (PARTS|MANUFACTURERS)/, 'autos'],
+  [/OIL & GAS (DRILLING|EQUIPMENT)/, 'oilServices'],
   [/OIL & GAS/, 'energy'],
   [/AEROSPACE & DEFENSE/, 'aerospace'],
   [/CREDIT SERVICES/, 'payments'],
-  [/MARINE SHIPPING|INTEGRATED FREIGHT|RAILROADS|AIRLINES/, 'transport'],
+  [/MARINE SHIPPING/, 'shipping'],
+  [/INTEGRATED FREIGHT|RAILROADS|AIRLINES/, 'transport'],
   [/SPECIALTY CHEMICALS|AGRICULTURAL INPUTS/, 'chemicals'],
   [/SPECIALTY INDUSTRIAL MACHINERY|FARM & HEAVY CONSTRUCTION|INDUSTRIAL DISTRIBUTION|ELECTRICAL EQUIPMENT/, 'industrials'],
   [/INTERNET CONTENT|ENTERTAINMENT/, 'internet'],

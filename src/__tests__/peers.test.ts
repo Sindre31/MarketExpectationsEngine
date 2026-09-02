@@ -84,3 +84,46 @@ describe('peerFromOverview', () => {
     expect(p.ccy).toBe('USD');
   });
 });
+
+describe('suggestPeers · the widened Nordic universe', () => {
+  const co2 = (t: string, n: string, m: string) => ({ ticker: t, name: n, meta: m, ccy: 'USD' }) as Company;
+
+  it('gives a tanker company shipping comparables, not UPS', () => {
+    // MARINE SHIPPING used to land in `transport`, where a crude tanker was
+    // measured against couriers and railroads
+    const hafn = suggestPeers(co2('HAFN', 'Hafnia Limited', 'NYSE · MARINE SHIPPING'), 5);
+    expect(hafn).toContain('FRO');
+    expect(hafn).toContain('DHT');
+    expect(hafn).not.toContain('UPS');
+    expect(hafn).not.toContain('UNP');
+  });
+
+  it('routes drillers and equipment names away from the integrated majors', () => {
+    const sdrl = suggestPeers(co2('SDRL', 'Seadrill Limited', 'NYSE · OIL & GAS DRILLING'), 5);
+    expect(sdrl).toContain('BORR');
+    expect(sdrl).toContain('SLB');
+    expect(sdrl).not.toContain('XOM');
+    expect(suggestPeers(co2('BKR', 'Baker Hughes Co', 'NASDAQ · OIL & GAS EQUIPMENT & SERVICES'), 4))
+      .toContain('NOV');
+  });
+
+  it('leaves Equinor own group alone', () => {
+    // the new names must not displace the majors for an integrated producer
+    const eqnr = suggestPeers(co2('EQNR', 'Equinor ASA ADR', 'NYSE · OIL & GAS INTEGRATED'), 5);
+    expect(eqnr).toEqual(['FRO', 'XOM', 'CVX', 'COP', 'EOG']);
+  });
+
+  it('reaches the new Nordic names in their own sectors', () => {
+    expect(suggestPeers(co2('ASND', 'Ascendis Pharma AS', 'NASDAQ · BIOTECHNOLOGY'), 3)).toContain('GMAB');
+    expect(suggestPeers(co2('GMAB', 'Genmab A/S', 'NASDAQ · BIOTECHNOLOGY'), 3)).toContain('ASND');
+    expect(suggestPeers(co2('NVO', 'Novo Nordisk A/S', 'NYSE · DRUG MANUFACTURERS - GENERAL'), 3)).toContain('ALVO');
+    expect(suggestPeers(co2('OTLY', 'Oatly Group AB ADR', 'NASDAQ · PACKAGED FOODS'), 3)).toContain('KO');
+  });
+
+  it('still leaves US companies unaffected', () => {
+    const kmi = suggestPeers(co2('CVX', 'Chevron Corp', 'NYSE · OIL & GAS INTEGRATED'), 5);
+    expect(kmi).not.toContain('SDRL');
+    expect(suggestPeers(co2('UPS', 'United Parcel Service', 'NYSE · INTEGRATED FREIGHT & LOGISTICS'), 4))
+      .toContain('FDX');
+  });
+});

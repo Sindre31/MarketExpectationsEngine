@@ -60,9 +60,38 @@ on a US exchange. US companies are unaffected.
 ticker in the universe is a primary US listing or a NYSE/NASDAQ ADR, because
 those are the only ones with fundamentals: local tickers (`EQNR.OL`,
 `NOVO-B.CO`, `ERIC-B.ST`) and OTC pink-sheet ADRs (`NHYDY`, `YARIY`, `DNNGY`,
-`ATLKY`, `VLVLY`, `NRDBY`) were all tested and return nothing at all. The
-verified set is EQNR, NVO, ERIC, NOK, ALV, FRO and GMAB. Anything else can
-still be added by ticker on the Peers page.
+`ATLKY`, `VLVLY`, `NRDBY`) were all tested and return nothing at all. Anything
+else can still be added by ticker on the Peers page.
+
+The verified set is 18 names, each checked to return a usable `OVERVIEW`:
+
+| Sector | Tickers |
+|---|---|
+| Pharma / biotech | NVO, GMAB, ASND, ALVO |
+| Hardware / telecom | ERIC, NOK |
+| Energy (integrated) | EQNR, FRO |
+| Oil services & drilling | SDRL, BORR |
+| Shipping | FRO, HAFN, SFL, DHT, NAT, FLNG, BWLP |
+| Industrials / autos | ALV, CDLR |
+| Internet / food | SPOT, OTLY |
+
+Three were tried and rejected: `GOGL` and `ZEAL` answer `No data returned`, and
+`EVAX` returns data but is pre-revenue with negative equity — noise in a
+five-name group rather than a comparison.
+
+**"Nordic" here is an editorial call, not a provider field.** The shipping and
+offshore names report `Country: USA` because they are Bermuda-domiciled, but
+they are Oslo-listed and Norwegian-run — and Frontline, in the list from the
+start, is the same shape. Spotify is a Luxembourg SA on the same reasoning.
+
+Widening the set needed two new industry buckets, because one is only useful if
+the comparison is. `MARINE SHIPPING` used to route to `transport`, where a crude
+tanker was measured against UPS and Union Pacific; it now has its own group.
+`OIL & GAS DRILLING` and `OIL & GAS EQUIPMENT & SERVICES` are matched ahead of
+the broad `OIL & GAS` rule, so a rig operator lands among SLB, HAL, BKR, NOV and
+RIG instead of the integrated majors. Equinor's own group is deliberately
+unchanged — FRO then XOM, CVX, COP, EOG — since leading an integrated producer
+with drillers or tankers would compare it against the wrong business.
 
 #### Oslo Børs
 
