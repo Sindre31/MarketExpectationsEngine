@@ -34,7 +34,10 @@ const UNIVERSE: Record<string, string[]> = {
   autos: ['TSLA', 'F', 'GM', 'STLA', 'TM', 'HMC', 'RIVN'],
   aerospace: ['BA', 'LMT', 'RTX', 'NOC', 'GD', 'LHX', 'TDG', 'HWM'],
   industrials: ['CAT', 'DE', 'HON', 'MMM', 'EMR', 'ETN', 'PH', 'ITW', 'CMI', 'GE'],
-  energy: ['XOM', 'CVX', 'COP', 'EOG', 'SLB', 'PSX', 'VLO', 'MPC', 'OXY', 'HAL'],
+  // integrated majors first, then E&P and refiners: an integrated producer
+  // should be measured against integrated producers. Services and drilling
+  // live in their own bucket below.
+  energy: ['XOM', 'CVX', 'SHEL', 'TTE', 'BP', 'E', 'COP', 'EOG', 'OXY', 'PSX', 'VLO', 'MPC'],
   // drillers and equipment names sit apart from the integrated majors: a rig
   // operator's multiples say nothing about Equinor's, and vice versa
   oilServices: ['SLB', 'HAL', 'BKR', 'NOV', 'RIG', 'SDRL', 'BORR'],
@@ -74,9 +77,13 @@ const NORDIC: Partial<Record<keyof typeof UNIVERSE, string[]>> = {
   biotech: ['GMAB', 'ASND', 'NVO'],
   hardware: ['ERIC', 'NOK'],
   telecom: ['ERIC', 'NOK'],
-  // deliberately just the two: Equinor is an integrated major, and leading its
-  // group with drillers or tankers would compare it against the wrong business
-  energy: ['EQNR', 'FRO'],
+  // no `energy` entry, and that is the finding rather than an omission: the
+  // provider has no second Nordic integrated producer to lead with. Aker BP
+  // (AKRBP) and Neste (NTOIY) were both tried and answer "No data returned",
+  // so Equinor's only Nordic option was Frontline — a tanker owner whose
+  // multiples say nothing about an integrated producer. It is better to lead
+  // with Shell and TotalEnergies than with the wrong business because it
+  // happens to be Norwegian.
   oilServices: ['SDRL', 'BORR'],
   shipping: ['FRO', 'HAFN', 'SFL', 'DHT', 'NAT', 'FLNG', 'BWLP'],
   transport: ['FRO', 'HAFN', 'SFL'],

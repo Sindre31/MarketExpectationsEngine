@@ -69,7 +69,7 @@ The verified set is 18 names, each checked to return a usable `OVERVIEW`:
 |---|---|
 | Pharma / biotech | NVO, GMAB, ASND, ALVO |
 | Hardware / telecom | ERIC, NOK |
-| Energy (integrated) | EQNR, FRO |
+| Energy (integrated) | EQNR |
 | Oil services & drilling | SDRL, BORR |
 | Shipping | FRO, HAFN, SFL, DHT, NAT, FLNG, BWLP |
 | Industrials / autos | ALV, CDLR |
@@ -89,9 +89,16 @@ the comparison is. `MARINE SHIPPING` used to route to `transport`, where a crude
 tanker was measured against UPS and Union Pacific; it now has its own group.
 `OIL & GAS DRILLING` and `OIL & GAS EQUIPMENT & SERVICES` are matched ahead of
 the broad `OIL & GAS` rule, so a rig operator lands among SLB, HAL, BKR, NOV and
-RIG instead of the integrated majors. Equinor's own group is deliberately
-unchanged — FRO then XOM, CVX, COP, EOG — since leading an integrated producer
-with drillers or tankers would compare it against the wrong business.
+RIG instead of the integrated majors.
+
+Equinor gets the integrated majors and nothing else — **XOM, CVX, SHEL, TTE,
+BP** — because an integrated producer should be measured against integrated
+producers. It used to lead with Frontline, on the rule that a Nordic company
+leads with Nordic names, but Frontline is a tanker owner whose multiples say
+nothing about Equinor. There is no Nordic replacement to lead with: Aker BP
+(`AKRBP`) and Neste (`NTOIY`) both answer `No data returned`, so `energy` is
+the one sector with no Nordic list at all. Leading with Shell and TotalEnergies
+beats leading with the wrong business because it happens to be Norwegian.
 
 One wrinkle the industry label cannot express: the provider files crude and
 product tankers under `OIL & GAS MIDSTREAM`, the same label it gives US

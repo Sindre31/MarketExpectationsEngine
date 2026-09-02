@@ -30,12 +30,11 @@ describe('suggestPeers', () => {
   });
 
   it('leads a Nordic company with Nordic comparables, then tops up', () => {
-    const eqnr = suggestPeers(co('EQNR', 'Equinor ASA ADR', 'NYSE · OIL & GAS INTEGRATED'), 5);
-    expect(eqnr[0]).toBe('FRO');
-    expect(eqnr).toContain('XOM');
-    // detected via the ASA in the name — the ADR lists in USD on a US exchange
+    // detected via the ASA/AS in the name — the ADR lists in USD on a US exchange
     const nvo = suggestPeers(co('NVO', 'Novo Nordisk A/S', 'NYSE · DRUG MANUFACTURERS - GENERAL'), 5);
     expect(nvo[0]).toBe('GMAB');
+    const eric = suggestPeers(co('ERIC', 'Telefonaktiebolaget LM Ericsson', 'NASDAQ · COMMUNICATION EQUIPMENT'), 5);
+    expect(eric[0]).toBe('NOK');
   });
 
   it('leaves US companies with US peers', () => {
@@ -45,8 +44,12 @@ describe('suggestPeers', () => {
   });
 
   it('treats a Nordic reporting currency as Nordic', () => {
-    const n = suggestPeers(co('XXXX', 'Something', 'Oslo Børs · OIL & GAS INTEGRATED', 'NOK'), 3);
-    expect(n[0]).toBe('EQNR');
+    // energy no longer proves this — it has no Nordic list, since the provider
+    // carries no second Nordic integrated producer — so use a sector that does
+    const n = suggestPeers(co('XXXX', 'Something', 'Oslo Børs · DRUG MANUFACTURERS - GENERAL', 'NOK'), 3);
+    expect(n[0]).toBe('NVO');
+    const t = suggestPeers(co('YYYY', 'Something Else', 'Oslo Børs · COMMUNICATION EQUIPMENT', 'NOK'), 3);
+    expect(t[0]).toBe('ERIC');
   });
 
   it('returns a usable group for an unrecognised industry', () => {
@@ -107,10 +110,15 @@ describe('suggestPeers · the widened Nordic universe', () => {
       .toContain('NOV');
   });
 
-  it('leaves Equinor own group alone', () => {
-    // the new names must not displace the majors for an integrated producer
+  it('gives an integrated producer integrated peers', () => {
+    // Frontline used to lead this group: the only Nordic name available, and a
+    // tanker owner. The provider has no second Nordic integrated producer —
+    // AKRBP and NTOIY both come back empty — so the group is the majors.
     const eqnr = suggestPeers(co2('EQNR', 'Equinor ASA ADR', 'NYSE · OIL & GAS INTEGRATED'), 5);
-    expect(eqnr).toEqual(['FRO', 'XOM', 'CVX', 'COP', 'EOG']);
+    expect(eqnr).toEqual(['XOM', 'CVX', 'SHEL', 'TTE', 'BP']);
+    expect(eqnr).not.toContain('FRO');
+    // and no drillers or service names, which have their own bucket
+    for (const t of ['SLB', 'HAL', 'SDRL', 'BORR']) expect(eqnr).not.toContain(t);
   });
 
   it('reaches the new Nordic names in their own sectors', () => {
