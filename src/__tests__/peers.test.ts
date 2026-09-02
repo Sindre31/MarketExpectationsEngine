@@ -127,3 +127,26 @@ describe('suggestPeers · the widened Nordic universe', () => {
       .toContain('FDX');
   });
 });
+
+describe('suggestPeers · tankers the provider labels as midstream', () => {
+  const co3 = (t: string, n: string) => ({ ticker: t, name: n, meta: 'NYSE · OIL & GAS MIDSTREAM', ccy: 'USD' }) as Company;
+
+  it('compares a tanker owner against tankers, not the integrated majors', () => {
+    // caught live: Frontline loaded with EQNR, XOM, CVX, COP, EOG
+    const fro = suggestPeers(co3('FRO', 'Frontline Ltd'), 5);
+    expect(fro).toContain('DHT');
+    expect(fro).toContain('HAFN');
+    expect(fro).not.toContain('XOM');
+    expect(fro).not.toContain('CVX');
+    for (const t of ['DHT', 'NAT', 'FLNG', 'BWLP']) {
+      expect(suggestPeers(co3(t, t), 4)).toContain('FRO');
+    }
+  });
+
+  it('leaves a genuine midstream operator on the energy route', () => {
+    // the reason the tankers are named individually rather than by industry
+    const kmi = suggestPeers(co3('KMI', 'Kinder Morgan Inc'), 4);
+    expect(kmi).toContain('XOM');
+    expect(kmi).not.toContain('DHT');
+  });
+});

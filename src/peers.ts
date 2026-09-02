@@ -164,6 +164,21 @@ const BY_INDUSTRY: [RegExp, keyof typeof UNIVERSE][] = [
   [/PETROLEUM|CRUDE|OIL|NATURAL GAS|DRILLING/, 'energy'],
 ];
 
+/**
+ * Companies whose reported industry sends them to the wrong comparison.
+ *
+ * Alpha Vantage files crude and product tankers under OIL & GAS MIDSTREAM —
+ * the same label it gives US pipeline operators — so Frontline came back in a
+ * group of Exxon, Chevron, ConocoPhillips and EOG, which say nothing about a
+ * tanker owner's multiples. Routing all of MIDSTREAM to shipping would just
+ * misroute the pipelines instead, so the tankers are named one by one.
+ *
+ * HAFN and SFL are not here: they report MARINE SHIPPING and route correctly.
+ */
+const BY_TICKER: Record<string, keyof typeof UNIVERSE> = {
+  FRO: 'shipping', DHT: 'shipping', NAT: 'shipping', FLNG: 'shipping', BWLP: 'shipping',
+};
+
 const BY_SECTOR: [RegExp, keyof typeof UNIVERSE][] = [
   [/TECHNOLOGY/, 'software'],
   [/LIFE SCIENCES/, 'pharma'],
@@ -181,10 +196,10 @@ const BY_SECTOR: [RegExp, keyof typeof UNIVERSE][] = [
  */
 export function suggestPeers(company: Company, limit = 6): string[] {
   const industry = (company.meta || '').toUpperCase();
+  const self = company.ticker.toUpperCase();
   const hit =
     BY_INDUSTRY.find(([re]) => re.test(industry)) || BY_SECTOR.find(([re]) => re.test(industry));
-  const key = hit ? hit[1] : 'industrials';
-  const self = company.ticker.toUpperCase();
+  const key = BY_TICKER[self] || (hit ? hit[1] : 'industrials');
   const ordered = isNordic(company) ? [...(NORDIC[key] || []), ...UNIVERSE[key]] : UNIVERSE[key];
   return ordered.filter((t, i, a) => t !== self && a.indexOf(t) === i).slice(0, limit);
 }

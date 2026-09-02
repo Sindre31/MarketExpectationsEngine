@@ -93,6 +93,14 @@ RIG instead of the integrated majors. Equinor's own group is deliberately
 unchanged — FRO then XOM, CVX, COP, EOG — since leading an integrated producer
 with drillers or tankers would compare it against the wrong business.
 
+One wrinkle the industry label cannot express: the provider files crude and
+product tankers under `OIL & GAS MIDSTREAM`, the same label it gives US
+pipeline operators. Loading Frontline live therefore still produced a group of
+Exxon, Chevron, ConocoPhillips and EOG. Routing all of midstream to shipping
+would misroute the pipelines instead, so `BY_TICKER` names the five affected
+tankers individually — FRO, DHT, NAT, FLNG and BWLP. HAFN and SFL are not in it,
+because they report `MARINE SHIPPING` and route correctly on their own.
+
 #### Oslo Børs
 
 There is no Oslo Børs line to load. Alpha Vantage's symbol index does not
